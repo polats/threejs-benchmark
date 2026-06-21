@@ -9,17 +9,17 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0b1020;
+  background: #05060d;
   font-family: system-ui, -apple-system, sans-serif;
   color: #f2f2f2;
 }
 
-/* R3F injects its <canvas> to fill #root. */
 canvas {
   display: block;
   touch-action: none;
 }
 
+/* Overlay layer: transparent to pointer events except interactive children. */
 .hud {
   position: fixed;
   inset: 0;
@@ -27,18 +27,98 @@ canvas {
   z-index: 10;
 }
 
-.hud .perf {
+.bench-bar {
   position: absolute;
-  top: 10px;
-  left: 12px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 0 8px;
+  max-width: 100%;
 }
 
-.hud .build-badge {
+.chip {
+  pointer-events: auto;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(20, 24, 40, 0.7);
+  color: #cfd6e0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.chip:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.chip.active {
+  color: #06203a;
+  background: linear-gradient(180deg, #8fd0ff, #4aa3ff);
+  border-color: transparent;
+}
+
+.perf {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  min-width: 150px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+}
+
+.perf-title {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.perf-row {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.perf-fps {
+  font-size: 18px;
+  font-weight: 800;
+  color: #8fd0ff;
+}
+
+.perf-row.ramp {
+  color: #ffd166;
+}
+
+.perf-row.done {
+  color: #7CFC9B;
+  font-weight: 700;
+}
+
+.restart {
+  margin-top: 8px;
+  pointer-events: auto;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.restart:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.build-badge {
   position: absolute;
   right: 10px;
   bottom: 8px;

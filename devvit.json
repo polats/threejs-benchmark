@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "threejs-bench-pg",
+  "name": "threejs-starter",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
@@ -19,7 +19,9 @@
   },
   "permissions": {
     "reddit": {
-      "asUser": ["SUBMIT_COMMENT"]
+      "asUser": [
+        "SUBMIT_COMMENT"
+      ]
     }
   },
   "menu": {
