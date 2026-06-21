@@ -3,7 +3,9 @@ import { InstancingBench } from './benches/InstancingBench';
 import { ParticlesBench } from './benches/ParticlesBench';
 import { GpgpuBench } from './benches/GpgpuBench';
 import { VisualBench } from './benches/VisualBench';
+import { RaymarchBench } from './benches/RaymarchBench';
 import { PhysicsBench } from './benches/PhysicsBench';
+import { RapierBench } from './benches/RapierBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -41,11 +43,27 @@ export const BENCHES: BenchDef[] = [
     Component: VisualBench,
   },
   {
+    id: 'raymarch',
+    label: 'Raymarch Bulb',
+    unit: 'steps',
+    group: 'visual',
+    blurb: 'Fullscreen Mandelbulb sphere-tracer — ramp the march steps',
+    Component: RaymarchBench,
+  },
+  {
     id: 'physics-cannon',
     label: 'Physics (cannon)',
     unit: 'bodies',
     group: 'physics',
-    blurb: 'cannon-es rigid bodies raining into a bin — ramp the body count',
+    blurb: 'cannon-es (pure JS) rigid bodies raining into a bin',
     Component: PhysicsBench,
+  },
+  {
+    id: 'physics-rapier',
+    label: 'Physics (Rapier)',
+    unit: 'bodies',
+    group: 'physics',
+    blurb: 'Rapier (Rust/WASM) rigid bodies — far higher body counts',
+    Component: RapierBench,
   },
 ];
