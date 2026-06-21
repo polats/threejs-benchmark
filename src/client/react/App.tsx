@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { BENCHES } from '../bench/registry';
 import type { RampState } from '../bench/types';
@@ -60,7 +60,9 @@ export function App() {
         camera={{ position: [0, 2, 13], fov: 55 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
-        <Bench key={runId} onStats={setStats} runId={runId} />
+        <Suspense fallback={null}>
+          <Bench key={runId} onStats={setStats} runId={runId} />
+        </Suspense>
       </Canvas>
 
       <Sidebar

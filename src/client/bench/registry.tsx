@@ -6,6 +6,8 @@ import { VisualBench } from './benches/VisualBench';
 import { RaymarchBench } from './benches/RaymarchBench';
 import { PhysicsBench } from './benches/PhysicsBench';
 import { RapierBench } from './benches/RapierBench';
+import { GltfCrowdBench } from './benches/GltfCrowdBench';
+import { SplatBench } from './benches/SplatBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -65,5 +67,22 @@ export const BENCHES: BenchDef[] = [
     group: 'physics',
     blurb: 'Rapier (Rust/WASM) rigid bodies — far higher body counts',
     Component: RapierBench,
+  },
+  {
+    id: 'crowd',
+    label: 'glTF Crowd',
+    unit: 'characters',
+    group: 'showcase',
+    blurb: 'Animated skinned RobotExpressive crowd — ramp the character count',
+    Component: GltfCrowdBench,
+  },
+  {
+    id: 'splat',
+    label: 'Gaussian Splat',
+    unit: 'splats',
+    group: 'showcase',
+    blurb: '3D Gaussian splatting (drei <Splat>) — a photoreal capture',
+    showcase: true,
+    Component: SplatBench,
   },
 ];

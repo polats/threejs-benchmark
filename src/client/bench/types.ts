@@ -23,5 +23,7 @@ export type BenchDef = {
   unit: string;
   group: BenchGroup;
   blurb: string;
+  /** A fixed "wow" scene that reports FPS but doesn't ramp a count. */
+  showcase?: boolean;
   Component: ComponentType<BenchProps>;
 };

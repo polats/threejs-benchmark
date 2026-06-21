@@ -74,12 +74,18 @@ export function Sidebar({
         <div className="status-row">
           <span className="status-fps">{stats.fps}</span> fps
         </div>
-        <div className="status-row">
-          {stats.count.toLocaleString()} {active.unit}
-        </div>
-        <div className={stats.done ? 'status-row done' : 'status-row ramp'}>
-          {stats.done ? `capacity ${stats.capacity.toLocaleString()}` : 'ramping…'}
-        </div>
+        {active.showcase ? (
+          <div className="status-row ramp">showcase scene</div>
+        ) : (
+          <>
+            <div className="status-row">
+              {stats.count.toLocaleString()} {active.unit}
+            </div>
+            <div className={stats.done ? 'status-row done' : 'status-row ramp'}>
+              {stats.done ? `capacity ${stats.capacity.toLocaleString()}` : 'ramping…'}
+            </div>
+          </>
+        )}
         <button type="button" className="sidebar-action" onClick={onRestart}>
           ↻ restart run
         </button>
