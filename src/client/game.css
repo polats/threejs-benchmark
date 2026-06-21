@@ -19,109 +19,209 @@ canvas {
   touch-action: none;
 }
 
-/* Overlay layer: transparent to pointer events except interactive children. */
-.hud {
+.app {
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  z-index: 10;
 }
 
-.bench-bar {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+/* ── Sidebar (dismissable, overlays the canvas) ───────────────────────────── */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 264px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  padding: 0 8px;
-  max-width: 100%;
+  flex-direction: column;
+  padding: 14px;
+  background: rgba(9, 12, 20, 0.82);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 20;
+  overflow-y: auto;
+  transition: transform 0.2s ease;
 }
 
-.chip {
-  pointer-events: auto;
-  padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  background: rgba(20, 24, 40, 0.7);
+.sidebar-collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+.sidebar-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-title strong {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-title p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8b93a7;
+}
+
+.sidebar-collapse {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: transparent;
   color: #cfd6e0;
-  font-size: 13px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sidebar-collapse:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-section h2 {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4aa3ff;
+}
+
+.sidebar-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-link {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  margin: 2px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #cfd6e0;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  backdrop-filter: blur(4px);
 }
 
-.chip:hover {
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.chip.active {
+.sidebar-link.active {
   color: #06203a;
   background: linear-gradient(180deg, #8fd0ff, #4aa3ff);
-  border-color: transparent;
 }
 
-.perf {
-  position: absolute;
-  top: 52px;
-  left: 12px;
-  min-width: 150px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.5);
+.sidebar-status {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 10px;
+  margin-top: 10px;
   font-variant-numeric: tabular-nums;
-  pointer-events: auto;
 }
 
-.perf-title {
+.status-head {
   font-weight: 800;
-  font-size: 14px;
+  font-size: 13px;
   margin-bottom: 4px;
 }
 
-.perf-row {
+.status-row {
   font-size: 13px;
-  opacity: 0.9;
+  color: #b9c0cf;
 }
 
-.perf-fps {
-  font-size: 18px;
+.status-fps {
+  font-size: 20px;
   font-weight: 800;
   color: #8fd0ff;
 }
 
-.perf-row.ramp {
+.status-row.ramp {
   color: #ffd166;
 }
 
-.perf-row.done {
-  color: #7CFC9B;
+.status-row.done {
+  color: #7cfc9b;
   font-weight: 700;
 }
 
-.restart {
-  margin-top: 8px;
-  pointer-events: auto;
-  padding: 4px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.12);
+.sidebar-action {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: transparent;
   color: #fff;
   font-size: 12px;
   cursor: pointer;
 }
 
-.restart:hover {
-  background: rgba(255, 255, 255, 0.22);
+.sidebar-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-style: solid;
+}
+
+/* Reopen toggle shown when collapsed */
+.sidebar-open {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 21;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9px;
+  background: rgba(9, 12, 20, 0.8);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.sidebar-open:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.sidebar-open-fps {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8fd0ff;
 }
 
 .build-badge {
-  position: absolute;
+  position: fixed;
   right: 10px;
   bottom: 8px;
+  z-index: 20;
   font-size: 11px;
   opacity: 0.5;
 }
