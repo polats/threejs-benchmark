@@ -1,0 +1,3 @@
+[submodule "references/goblin-gardens"]
+	path = references/goblin-gardens
+	url = https://github.com/polats/goblin-gardens

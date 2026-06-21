@@ -1,0 +1,14 @@
+# secrets — NEVER commit
+.env
+.env.*
+!.env.sample
+
+# deps / build
+node_modules/
+dist/
+dist-web/
+.vite/
+
+# misc
+.DS_Store
+*.log
