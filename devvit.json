@@ -17,9 +17,6 @@
     "dir": "dist/server",
     "entry": "index.cjs"
   },
-  "media": {
-    "dir": "assets"
-  },
   "permissions": {
     "reddit": {
       "asUser": ["SUBMIT_COMMENT"]
