@@ -21,7 +21,7 @@ concurrency:
 env:
   # Subreddit to install/activate the uploaded version on (matches devvit.json
   # `dev.subreddit`). Must be a sub the token's account moderates.
-  DEVVIT_SUBREDDIT: threejs_benchmark_dev
+  DEVVIT_SUBREDDIT: threejs_starter_dev
 
 jobs:
   deploy:
