@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "threejs-bench",
+  "name": "threejs-bench-pg",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
