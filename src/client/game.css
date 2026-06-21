@@ -38,7 +38,7 @@ canvas {
   backdrop-filter: blur(12px);
   border-right: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 20;
-  overflow-y: auto;
+  overflow: hidden;
   transition: transform 0.2s ease;
 }
 
@@ -96,6 +96,9 @@ canvas {
 .sidebar-nav {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  /* scene list scrolls on short screens; title + status stay pinned */
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-section h2 {

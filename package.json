@@ -24,6 +24,7 @@
     "@devvit/web": "0.12.24",
     "@dimforge/rapier3d-compat": "^0.19.3",
     "@hono/node-server": "2.0.3",
+    "@mkkellogg/gaussian-splats-3d": "^0.4.7",
     "@react-three/drei": "^10.0.1",
     "@react-three/fiber": "^9.0.4",
     "@react-three/postprocessing": "^3.0.4",
