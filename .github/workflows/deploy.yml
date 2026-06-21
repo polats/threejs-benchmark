@@ -1,0 +1,93 @@
+name: Deploy to Devvit
+
+# Deploys (uploads) a new app version to Devvit. The local/sandboxed dev
+# container cannot reach *.reddit.com (blocked by egress policy), so deployment
+# runs here on GitHub-hosted runners, which have unrestricted network access.
+#
+# Auth: the Devvit CLI reads the DEVVIT_AUTH_TOKEN env var natively (the exact
+# contents of a local ~/.devvit/token). Store it as a repository secret named
+# DEVVIT_AUTH_TOKEN — see the note at the bottom of this file.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Never let two deploys run at once; let an in-flight deploy finish.
+concurrency:
+  group: devvit-deploy
+  cancel-in-progress: false
+
+env:
+  # Subreddit to install/activate the uploaded version on (matches devvit.json
+  # `dev.subreddit`). Must be a sub the token's account moderates.
+  DEVVIT_SUBREDDIT: threejs_benchmark_dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Upload to Devvit
+        env:
+          DEVVIT_AUTH_TOKEN: ${{ secrets.DEVVIT_AUTH_TOKEN }}
+          DEVVIT_DISABLE_METRICS: "1"
+        # --just-do-it: non-interactive; auto-bumps the patch version.
+        run: npx --no-install devvit upload --just-do-it
+
+      - name: Activate version on subreddit
+        env:
+          DEVVIT_AUTH_TOKEN: ${{ secrets.DEVVIT_AUTH_TOKEN }}
+          DEVVIT_DISABLE_METRICS: "1"
+        # `upload` stores the new version (PRIVATE); this upgrades the subreddit
+        # install to it. The version can take a few seconds to finish processing
+        # on Devvit's backend, so `install` may fail with "isn't ready to be
+        # installed yet". Retry ONLY that transient error; fail fast on anything else.
+        run: |
+          set +e
+          attempts=8
+          for i in $(seq 1 "$attempts"); do
+            out=$(npx --no-install devvit install "$DEVVIT_SUBREDDIT" 2>&1)
+            code=$?
+            echo "$out"
+            if [ "$code" -eq 0 ]; then
+              echo "✓ Activated on attempt $i."
+              exit 0
+            fi
+            if echo "$out" | grep -qiE "ready to be installed yet|finish processing"; then
+              echo "Version still processing (attempt $i/$attempts); retrying in 15s..."
+              sleep 15
+            else
+              echo "Non-transient install error; aborting."
+              exit 1
+            fi
+          done
+          echo "Gave up after $attempts attempts waiting for the version to process."
+          exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# One-time setup: add the DEVVIT_AUTH_TOKEN repository secret.
+#   Settings → Secrets and variables → Actions → New repository secret
+#     Name:  DEVVIT_AUTH_TOKEN
+#     Value: the single-line JSON from your local ~/.devvit/token
+#   Or:  gh secret set DEVVIT_AUTH_TOKEN < ~/.devvit/token
+# ─────────────────────────────────────────────────────────────────────────────

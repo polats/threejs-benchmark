@@ -1,0 +1,47 @@
+{
+  "private": true,
+  "name": "threejs-benchmark",
+  "version": "0.0.0",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:web": "vite build --config vite.web.config.ts",
+    "deploy": "npm run type-check && npm run lint && devvit upload",
+    "dev": "devvit playtest",
+    "dev:local": "vite --config vite.web.config.ts",
+    "launch": "npm run deploy && devvit publish",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "login": "devvit login",
+    "prettier": "prettier --write .",
+    "type-check": "tsc --build"
+  },
+  "engines": {
+    "node": ">=22.2.0"
+  },
+  "dependencies": {
+    "@devvit/start": "0.12.24",
+    "@devvit/web": "0.12.24",
+    "@hono/node-server": "2.0.3",
+    "@react-three/drei": "^10.0.1",
+    "@react-three/fiber": "^9.0.4",
+    "devvit": "0.12.24",
+    "hono": "4.12.21",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.178.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "^22.19.19",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.178.0",
+    "eslint": "10.4.0",
+    "globals": "17.6.0",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.59.4",
+    "vite": "8.0.13"
+  }
+}
