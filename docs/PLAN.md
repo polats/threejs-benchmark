@@ -128,36 +128,21 @@ Mirror of `reddit-phaser`'s `BenchScene`, adapted to R3F:
 - Capacity + device info (`detect-gpu` tier, renderer backend) reported to the
   server for a cross-device leaderboard (reuse `reddit-phaser`'s reporting).
 
-## 7. v1 bench suite (all four groups)
+## 7. Implemented bench suite — 20 benches across 4 groups
 
-Tags: 🟢 zero-asset WebGL2 · 🟡 one small vendored asset · ⚡ WASM (proven OK via
-goblin-gardens) · 🔵 WebGPU-only (gated).
+See [`FEATURES-AND-DEMOS.md`](./FEATURES-AND-DEMOS.md) for the coverage map and the
+researched "next tier" (simulation) ideas. Each bench ramps-until-FPS-drops and
+reports capacity, or (showcase) reports live FPS.
 
-**Rendering core**
-- 🟢 **Instancing** — `InstancedMesh` ramp → 1M+ (+ a "1M grass blades" showcase
-  variant, à la al-ro).
-- 🟢 **BatchedMesh** — mixed-geometry count ramp (the modern instancing path).
-- 🟢 **GPGPU particles** — `GPUComputationRenderer` boids; ramp count = WIDTH².
+- **Rendering (9)**: Instancing · Particles · GPGPU Flow · WebGPU Particles (TSL
+  compute, gated) · BatchedMesh · Shadows · Fat Lines · Morph Targets · 3D Text.
+- **Visual (6)**: Post FX Bloom · Raymarch Bulb · TSL Sea (dual-backend) · Glass ·
+  Reflections · SSAO + DoF.
+- **Physics (2)**: cannon-es · Rapier.
+- **Showcase (3)**: glTF Crowd · Gaussian Splat · Ocean.
 
-**Visual fidelity**
-- 🟢 **Cinematic post stack** toggle — `@react-three/postprocessing` Bloom + N8AO
-  + DoF + Vignette + CA; report effect-cost ΔFPS, ramp AO samples.
-- 🟢 **Raymarch** — volumetric clouds (WebGL2-fallback-capable) and/or Mandelbulb;
-  two-axis ramp (march steps × resolution scale).
-- 🟡 **Ocean** — reflective animated water hero scene (one small normal map).
-
-**Physics** (Rapier proven viable by goblin-gardens)
-- ⚡ **Rapier** (`@react-three/rapier`) — "pile of boxes" body-count ramp (SOTA).
-- 🟢 **cannon-es** — pure-JS body-count ramp (CSP-bulletproof comparison/baseline).
-
-**Showcase (non-ramp "wow")**
-- 🟡 **Gaussian splatting** — Spark or drei `<Splat>` (WebGL2-only, no
-  SharedArrayBuffer); one vendored compressed splat asset. Candidate "home" scene.
-- 🟡 **Animated glTF crowd** — instanced `RobotExpressive.glb` (0.44 MB, no DRACO).
-
-**Optional, WebGPU-detected**
-- 🔵 **WebGPU compute particles** (TSL, 500k+) with the WebGL2 GPGPU bench as the
-  fallback shown when WebGPU is absent.
+Vendored assets (all under `public/`, no CDN): `RobotExpressive.glb`,
+`nike.splat`, `waternormals.jpg`, `helvetiker_regular.typeface.json`.
 
 ## 8. CSP / assets / WASM handling
 
@@ -185,25 +170,33 @@ goblin-gardens) · 🔵 WebGPU-only (gated).
   GitHub repo secrets. Devvit app name: `threejs-benchmark`; dev subreddit from
   `DEVVIT_SUBREDDIT`. First `devvit upload` registers the app.
 
-## 10. Phased roadmap
+## 10. Phased roadmap (status)
 
-0. **Plan + research + reference submodule** ← (this commit).
-1. **Scaffold**: Devvit + Vite + React + R3F skeleton, splash/game/server, bench
-   harness shell, both deploy workflows. Push; confirm CI deploys green.
-2. **Validate in the live iframe**: WebGL2 baseline render; confirm Rapier WASM
-   instantiates; probe `navigator.gpu`. (goblin-gardens implies all pass, but
-   verify on the actual deployed page.)
-3. **Rendering core** benches + bench bar + perf HUD + capacity reporting.
-4. **Visual** (post stack, raymarch, ocean) + **Physics** (Rapier + cannon-es).
-5. **Showcase** (Gaussian splat, glTF crowd); pick the default "home" scene;
-   optional WebGPU compute bench.
-6. Leaderboard + polish + README/AGENTS.
+0. ✅ Plan + research + reference submodule.
+1. ✅ Scaffold (Devvit + Vite + React + R3F + both workflows); CI deploys green.
+2. ✅ Live iframe validated (WebGL2 render; Rapier WASM runs; `navigator.gpu`
+   probed — WebGPU benches gated by detection).
+3. ✅ Rendering core + the dismissable **sidebar** (woid-style, grouped scene
+   select + live run status) + capacity reporting.
+4. ✅ Visual (post stack, raymarch, ocean) + Physics (Rapier + cannon-es).
+5. ✅ Showcase (Gaussian splat, glTF crowd) + WebGPU compute bench + dual-backend
+   TSL bench.
+6. ✅ Gap-fillers (BatchedMesh, Shadows, Glass, Reflections, SSAO+DoF) + primitives
+   (Fat Lines, Morph, 3D Text). **→ 20 benches.**
+7. ◻️ Next: simulation tier (fracture, metaballs, boids, WebGPU softbody/cloth —
+   see FEATURES-AND-DEMOS.md), a **device leaderboard UI** (server already records
+   capacities), Vercel project linking, and a README/AGENTS.
 
-## 11. Open decisions (to confirm before/while scaffolding)
+## 11. Decisions (resolved)
 
-- **Server framework**: Hono (reddit-phaser) vs Express (goblin-gardens). Lean
-  Hono for consistency with reddit-phaser; either works.
-- **Default "home" scene**: Gaussian-splat showcase vs the 1M-grass/instancing
-  "wow" vs a postprocessed hero. (reddit-phaser made its flagship game the home.)
-- **Splat library**: Spark (`@sparkjsdev/spark`) vs drei `<Splat>` vs mkkellogg.
-- **WebGPU bench**: include in v1 (gated) or defer to v2.
+- **Server framework**: Hono (matches reddit-phaser).
+- **Splat library**: **mkkellogg** (`@mkkellogg/gaussian-splats-3d`, no SAB, CPU
+  sort) — after drei `<Splat>` proved brittle to the blob-worker CSP; wrapped in an
+  error boundary with a graceful fallback message where the worker is blocked.
+- **WebGPU**: included, **isolated** (own canvas + `WebGPURenderer`; can't share
+  the R3F canvas since `three/webgpu` has no `WebGLRenderer`). Compute bench is
+  WebGPU-only/gated; TSL Sea runs on both backends with an A/B toggle.
+- **App name**: `threejs-starter`; dev subreddit `threejs_starter_dev`.
+- **Default scene**: first bench (Instancing); no dedicated "home" yet.
+- **CI lockfile**: regenerated with **npm 10** to match the runner (the dev
+  container's npm 11 wrote esbuild platform deps that npm-10 `npm ci` rejected).
