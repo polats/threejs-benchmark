@@ -25,6 +25,7 @@ import { FractureBench } from './benches/FractureBench';
 import { ClothBench } from './benches/ClothBench';
 import { VolumeCloudsBench } from './benches/VolumeCloudsBench';
 import { TrailsBench } from './benches/TrailsBench';
+import { LightStormBench } from './benches/LightStormBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -126,6 +127,14 @@ export const BENCHES: BenchDef[] = [
     group: 'visual',
     blurb: 'Raymarched 3D-fbm cloud volume with light-march self-shadowing — ramp the step budget',
     Component: VolumeCloudsBench,
+  },
+  {
+    id: 'light-storm',
+    label: 'Light Storm',
+    unit: 'lights',
+    group: 'visual',
+    blurb: 'A field lit by many moving coloured point lights (no shadows) — ramp the light count',
+    Component: LightStormBench,
   },
   {
     id: 'tsl-sea',
