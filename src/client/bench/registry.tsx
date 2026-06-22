@@ -10,6 +10,9 @@ import { GltfCrowdBench } from './benches/GltfCrowdBench';
 import { SplatBench } from './benches/SplatBench';
 import { WebGPUParticlesBench } from './benches/WebGPUParticlesBench';
 import { WebGPUSeaBench } from './benches/WebGPUSeaBench';
+import { BatchedMeshBench } from './benches/BatchedMeshBench';
+import { ShadowsBench } from './benches/ShadowsBench';
+import { OceanBench } from './benches/OceanBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -47,6 +50,22 @@ export const BENCHES: BenchDef[] = [
     showcase: true,
     webgpu: true,
     Component: WebGPUParticlesBench,
+  },
+  {
+    id: 'batched',
+    label: 'BatchedMesh',
+    unit: 'objects',
+    group: 'render',
+    blurb: 'BatchedMesh — many different geometries in one multi-draw call; ramp the count',
+    Component: BatchedMeshBench,
+  },
+  {
+    id: 'shadows',
+    label: 'Shadows',
+    unit: 'lights',
+    group: 'render',
+    blurb: 'Many shadow-casting spot lights over a field — ramp the light (shadow-pass) count',
+    Component: ShadowsBench,
   },
   {
     id: 'postfx',
@@ -103,8 +122,17 @@ export const BENCHES: BenchDef[] = [
     label: 'Gaussian Splat',
     unit: 'splats',
     group: 'showcase',
-    blurb: '3D Gaussian splatting (drei <Splat>) — a photoreal capture',
+    blurb: '3D Gaussian splatting — a photoreal capture',
     showcase: true,
     Component: SplatBench,
+  },
+  {
+    id: 'ocean',
+    label: 'Ocean',
+    unit: '',
+    group: 'showcase',
+    blurb: 'Reflective ocean (Water + procedural Sky) — re-renders the scene each frame',
+    showcase: true,
+    Component: OceanBench,
   },
 ];

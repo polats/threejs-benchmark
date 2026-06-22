@@ -62,6 +62,7 @@ export function App() {
         <Bench key={runId} onStats={setStats} runId={runId} />
       ) : (
         <Canvas
+          shadows
           dpr={[1, 2]}
           camera={{ position: [0, 2, 13], fov: 55 }}
           gl={{ antialias: true, powerPreference: 'high-performance' }}
