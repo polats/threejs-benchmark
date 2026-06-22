@@ -20,6 +20,7 @@ export function App() {
 
   const active = BENCHES.find((b) => b.id === activeId) ?? BENCHES[0]!;
   const Bench = active.Component;
+  const isWebGPU = active.webgpu === true;
 
   const select = useCallback((id: string) => {
     setActiveId(id);
@@ -55,15 +56,21 @@ export function App() {
 
   return (
     <div className={collapsed ? 'app sidebar-collapsed' : 'app'}>
-      <Canvas
-        dpr={[1, 2]}
-        camera={{ position: [0, 2, 13], fov: 55 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
-      >
-        <Suspense fallback={null}>
-          <Bench key={runId} onStats={setStats} runId={runId} />
-        </Suspense>
-      </Canvas>
+      {isWebGPU ? (
+        // WebGPU benches own their own canvas + renderer (three/webgpu has no
+        // WebGLRenderer, so it can't share the R3F canvas with the WebGL benches).
+        <Bench key={runId} onStats={setStats} runId={runId} />
+      ) : (
+        <Canvas
+          dpr={[1, 2]}
+          camera={{ position: [0, 2, 13], fov: 55 }}
+          gl={{ antialias: true, powerPreference: 'high-performance' }}
+        >
+          <Suspense fallback={null}>
+            <Bench key={runId} onStats={setStats} runId={runId} />
+          </Suspense>
+        </Canvas>
+      )}
 
       <Sidebar
         benches={BENCHES}

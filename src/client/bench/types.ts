@@ -25,5 +25,7 @@ export type BenchDef = {
   blurb: string;
   /** A fixed "wow" scene that reports FPS but doesn't ramp a count. */
   showcase?: boolean;
+  /** Renders with WebGPU (its own canvas, outside the R3F/WebGL Canvas). */
+  webgpu?: boolean;
   Component: ComponentType<BenchProps>;
 };

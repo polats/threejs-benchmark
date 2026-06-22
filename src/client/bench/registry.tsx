@@ -8,6 +8,7 @@ import { PhysicsBench } from './benches/PhysicsBench';
 import { RapierBench } from './benches/RapierBench';
 import { GltfCrowdBench } from './benches/GltfCrowdBench';
 import { SplatBench } from './benches/SplatBench';
+import { WebGPUParticlesBench } from './benches/WebGPUParticlesBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -33,8 +34,18 @@ export const BENCHES: BenchDef[] = [
     label: 'GPGPU Flow',
     unit: 'particles',
     group: 'render',
-    blurb: 'GPUComputationRenderer — particles advected by a flow field',
+    blurb: 'GPUComputationRenderer — particles advected by a flow field (WebGL2)',
     Component: GpgpuBench,
+  },
+  {
+    id: 'webgpu-particles',
+    label: 'WebGPU Particles',
+    unit: 'particles',
+    group: 'render',
+    blurb: '160k particles in a TSL compute shader — WebGPU only (falls back to a message)',
+    showcase: true,
+    webgpu: true,
+    Component: WebGPUParticlesBench,
   },
   {
     id: 'postfx',

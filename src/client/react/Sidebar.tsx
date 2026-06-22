@@ -75,7 +75,9 @@ export function Sidebar({
           <span className="status-fps">{stats.fps}</span> fps
         </div>
         {active.showcase ? (
-          <div className="status-row ramp">showcase scene</div>
+          <div className="status-row ramp">
+            {stats.count > 0 ? `${stats.count.toLocaleString()} ${active.unit} · showcase` : 'showcase scene'}
+          </div>
         ) : (
           <>
             <div className="status-row">
