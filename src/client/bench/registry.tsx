@@ -13,6 +13,9 @@ import { WebGPUSeaBench } from './benches/WebGPUSeaBench';
 import { BatchedMeshBench } from './benches/BatchedMeshBench';
 import { ShadowsBench } from './benches/ShadowsBench';
 import { OceanBench } from './benches/OceanBench';
+import { GlassBench } from './benches/GlassBench';
+import { ReflectionsBench } from './benches/ReflectionsBench';
+import { PostBench } from './benches/PostBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -92,6 +95,31 @@ export const BENCHES: BenchDef[] = [
     showcase: true,
     webgpu: true,
     Component: WebGPUSeaBench,
+  },
+  {
+    id: 'glass',
+    label: 'Glass',
+    unit: 'glass objects',
+    group: 'visual',
+    blurb: 'Refractive MeshPhysicalMaterial transmission over a refracted field — ramp the count',
+    Component: GlassBench,
+  },
+  {
+    id: 'reflections',
+    label: 'Reflections',
+    unit: '',
+    group: 'visual',
+    blurb: 'Glossy reflective floor (MeshReflectorMaterial) mirroring glowing shapes + bloom',
+    showcase: true,
+    Component: ReflectionsBench,
+  },
+  {
+    id: 'post-ssao',
+    label: 'SSAO + DoF',
+    unit: 'objects',
+    group: 'visual',
+    blurb: 'Cinematic post stack — N8AO + depth of field + bloom — over a ramping field',
+    Component: PostBench,
   },
   {
     id: 'physics-cannon',
