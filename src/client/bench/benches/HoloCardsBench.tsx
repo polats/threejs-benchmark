@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing';
+import { Html, OrbitControls } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
@@ -9,47 +9,47 @@ import { useRamp } from '../useRamp';
 import { useFps } from '../useFps';
 import type { BenchProps } from '../types';
 
-// Holographic trading cards — a faithful re-implementation of the foil technique
-// from Isaac Johnson's "Ziggy card" (https://isaac-johnson-blog.pages.dev/ziggy-card/),
-// credited. Unlike a built-in iridescence, the whole holo is a custom shader patched
-// into MeshPhysicalMaterial: the reflection vector is projected into tangent space
-// (tilt), driving a cosine-palette hue + anisotropic diffraction lines + faceted
-// per-cell glitter + foil-pattern modulation, then blended over the lit colour gated
-// by exposedFoil × fresnel. Foil regions also get their own roughness/metalness, and
-// a height map perturbs the normal. Art + all foil maps are generated procedurally
-// (no copied assets). Studio RectAreaLights + RoomEnvironment + bloom; cards tilt to
-// the pointer (uMotion tracks angular velocity). Hero card (4 presets) ⇄ ramping grid.
+// Holographic trading cards — built up in stages, following Isaac Johnson's
+// "Ziggy card" build order (https://isaac-johnson-blog.pages.dev/ziggy-card/),
+// credited; technique re-implemented with our own procedural assets.
+//   1 Base   — laminated geometry + clean PBR material + studio lighting (no foil)
+//   2 Foil   — foil mask blends metalness/roughness (+ gentle detail normal)
+//   3 Sheen  — view-angle iridescence (reflection→tangent tilt → cosine-palette hue)
+//   4 Lines  — anisotropic brushed diffraction lines
+//   5 Glitter— discrete faceted glitter flecks (+ motion lift)
+// Hero card exposes the stage toggles + presets; the grid runs the full stack.
 RectAreaLightUniformsLib.init();
 
-const CW = 2.5;
-const CH = 3.5;
-const RAD = 0.16;
+const CW = 2.2;
+const CH = 3.08;
+const RAD = 0.12;
+const DEPTH = 0.06;
 
-type Preset = {
-  name: string;
-  hue: number;
-  tshift: number;
-  milk: number;
-  sat: number;
-  line: number;
-  ang: number;
-  glint: number;
-  spark: number;
-  sparkDensity: number;
-};
-const PRESETS: Preset[] = [
-  { name: 'Rainbow Rare', hue: 1.5, tshift: 2.0, milk: 0.35, sat: 0.9, line: 120, ang: 23, glint: 0.5, spark: 0.7, sparkDensity: 90 },
-  { name: 'Cosmos', hue: 2.3, tshift: 2.6, milk: 0.22, sat: 1.0, line: 80, ang: 12, glint: 0.35, spark: 1.2, sparkDensity: 140 },
-  { name: 'Line Holo', hue: 1.0, tshift: 1.4, milk: 0.3, sat: 0.85, line: 240, ang: 8, glint: 1.0, spark: 0.18, sparkDensity: 60 },
-  { name: 'Reverse', hue: 1.6, tshift: 2.0, milk: 0.5, sat: 0.8, line: 90, ang: 62, glint: 0.45, spark: 0.85, sparkDensity: 110 },
+type LayerKey = 'emboss' | 'foil' | 'holo' | 'lines' | 'glitter';
+const LAYERS: { key: LayerKey; label: string }[] = [
+  { key: 'emboss', label: 'Emboss' },
+  { key: 'foil', label: 'Foil' },
+  { key: 'holo', label: 'Sheen' },
+  { key: 'lines', label: 'Lines' },
+  { key: 'glitter', label: 'Glitter' },
 ];
 
+type Preset = { name: string; hue: number; tshift: number; milk: number; sat: number; line: number; ang: number; glint: number; spark: number; sparkDensity: number };
+const PRESETS: Preset[] = [
+  { name: 'Rainbow Rare', hue: 1.4, tshift: 1.8, milk: 0.4, sat: 0.85, line: 70, ang: 23, glint: 0.3, spark: 0.55, sparkDensity: 55 },
+  { name: 'Cosmos', hue: 2.1, tshift: 2.4, milk: 0.28, sat: 0.95, line: 55, ang: 12, glint: 0.22, spark: 0.9, sparkDensity: 80 },
+  { name: 'Line Holo', hue: 1.0, tshift: 1.3, milk: 0.35, sat: 0.8, line: 95, ang: 8, glint: 0.34, spark: 0.16, sparkDensity: 40 },
+  { name: 'Reverse', hue: 1.5, tshift: 1.8, milk: 0.52, sat: 0.78, line: 55, ang: 60, glint: 0.28, spark: 0.6, sparkDensity: 65 },
+];
+
+type Stage = { foil: number; holo: number; lines: number; glitter: number };
 type Shared = {
   front: THREE.ShapeGeometry;
   core: THREE.ExtrudeGeometry;
   mats: THREE.MeshPhysicalMaterial[];
   coreMat: THREE.MeshStandardMaterial;
   textures: THREE.Texture[];
+  tex: ReturnType<typeof makeTextures>;
 };
 
 function roundedRectShape(w: number, h: number, r: number) {
@@ -83,19 +83,31 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.roundRect(x, y, w, h, r);
 }
 
-function noiseCanvas(size: number, lines: boolean) {
+// Smooth grayscale via bilinear upscale of a low-res random grid (no white-noise grain).
+function smoothCanvas(size: number, cells: number, base: number, amp: number) {
+  const g = new Float32Array((cells + 1) * (cells + 1));
+  for (let i = 0; i < g.length; i++) g[i] = Math.random();
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;
   const img = ctx.createImageData(size, size);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      let v = Math.random();
-      if (lines) v = 0.5 + 0.5 * Math.sin(y * 0.6) * 0.6 + (Math.random() < 0.06 ? Math.random() * 0.5 : 0);
-      const i = (y * size + x) * 4;
-      const b = Math.max(0, Math.min(255, v * 255));
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = b;
-      img.data[i + 3] = 255;
+      const gx = (x / size) * cells;
+      const gy = (y / size) * cells;
+      const ix = Math.floor(gx);
+      const iy = Math.floor(gy);
+      const fx = gx - ix;
+      const fy = gy - iy;
+      const a = g[iy * (cells + 1) + ix]!;
+      const b = g[iy * (cells + 1) + ix + 1]!;
+      const cc = g[(iy + 1) * (cells + 1) + ix]!;
+      const d = g[(iy + 1) * (cells + 1) + ix + 1]!;
+      const v = a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + cc * (1 - fx) * fy + d * fx * fy;
+      const px = Math.max(0, Math.min(255, (base + amp * v) * 255));
+      const o = (y * size + x) * 4;
+      img.data[o] = img.data[o + 1] = img.data[o + 2] = px;
+      img.data[o + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -105,11 +117,91 @@ function noiseCanvas(size: number, lines: boolean) {
   return t;
 }
 
+// Structural emboss: draw the printed elements (frame ridges, borders, boxes,
+// raised text/pips) as a height field with blurred bevels, then convert to a
+// tangent-space normal map so the studio lights catch the raised edges.
+function embossNormalMap() {
+  const W = 512;
+  const H = 716;
+  const strength = 4.0;
+  const hc = document.createElement('canvas');
+  hc.width = W;
+  hc.height = H;
+  const h = hc.getContext('2d')!;
+  h.fillStyle = '#808080';
+  h.fillRect(0, 0, W, H);
+  h.strokeStyle = '#ffffff';
+  h.fillStyle = '#ffffff';
+  h.lineJoin = 'round';
+  h.lineWidth = 7;
+  rr(h, 12, 12, W - 24, H - 24, 20);
+  h.stroke();
+  h.lineWidth = 5;
+  rr(h, 28, 28, W - 56, H - 56, 14);
+  h.stroke();
+  rr(h, 46, 100, W - 92, 360, 10);
+  h.stroke();
+  h.lineWidth = 4;
+  rr(h, 42, 40, W - 84, 46, 10);
+  h.stroke();
+  rr(h, 42, 480, W - 84, 150, 10);
+  h.stroke();
+  h.textBaseline = 'middle';
+  h.font = 'bold 26px sans-serif';
+  h.textAlign = 'left';
+  h.fillText('Ziggy', 58, 64);
+  h.font = 'bold 24px sans-serif';
+  h.textAlign = 'right';
+  h.fillText('HP 120', W - 58, 64);
+  h.font = 'bold 22px sans-serif';
+  h.textAlign = 'left';
+  h.fillText('Prism Beam', 150, 512);
+  h.textAlign = 'right';
+  h.fillText('90', W - 58, 512);
+  h.font = '18px sans-serif';
+  h.textAlign = 'left';
+  h.fillText('★ ULTRA RARE', 46, 672);
+  for (let i = 0; i < 3; i++) {
+    h.beginPath();
+    h.arc(64 + i * 26, 512, 10, 0, 7);
+    h.fill();
+  }
+  // blur → soft bevels
+  const bc = document.createElement('canvas');
+  bc.width = W;
+  bc.height = H;
+  const b = bc.getContext('2d')!;
+  b.filter = 'blur(2px)';
+  b.drawImage(hc, 0, 0);
+  const src = b.getImageData(0, 0, W, H).data;
+  const at = (x: number, y: number) =>
+    src[(Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))) * 4]! / 255;
+  const nc = document.createElement('canvas');
+  nc.width = W;
+  nc.height = H;
+  const n = nc.getContext('2d')!;
+  const out = n.createImageData(W, H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
+      const inv = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+      const i = (y * W + x) * 4;
+      out.data[i] = (-dx * inv * 0.5 + 0.5) * 255;
+      out.data[i + 1] = (dy * inv * 0.5 + 0.5) * 255;
+      out.data[i + 2] = inv * 255;
+      out.data[i + 3] = 255;
+    }
+  }
+  n.putImageData(out, 0, 0);
+  const t = new THREE.CanvasTexture(nc);
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+
 function makeTextures() {
   const W = 512;
   const H = 716;
-
-  // ---------- albedo ----------
   const ac = document.createElement('canvas');
   ac.width = W;
   ac.height = H;
@@ -120,7 +212,7 @@ function makeTextures() {
   gold.addColorStop(1, '#f9e08a');
   a.fillStyle = gold;
   a.fillRect(0, 0, W, H);
-  a.strokeStyle = 'rgba(255,255,255,0.5)';
+  a.strokeStyle = 'rgba(255,255,255,0.45)';
   a.lineWidth = 3;
   rr(a, 10, 10, W - 20, H - 20, 22);
   a.stroke();
@@ -135,10 +227,6 @@ function makeTextures() {
   a.textAlign = 'left';
   a.textBaseline = 'middle';
   a.fillText('Ziggy', 58, 64);
-  a.fillStyle = '#ff6b6b';
-  a.beginPath();
-  a.arc(W - 120, 63, 9, 0, 7);
-  a.fill();
   a.fillStyle = '#ffffff';
   a.font = 'bold 24px sans-serif';
   a.textAlign = 'right';
@@ -156,14 +244,14 @@ function makeTextures() {
   a.clip();
   a.fillStyle = sky;
   a.fillRect(ax, ay, aw, ah);
-  for (let i = 0; i < 90; i++) {
-    a.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.7})`;
+  for (let i = 0; i < 70; i++) {
+    a.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.6})`;
     a.beginPath();
-    a.arc(ax + Math.random() * aw, ay + Math.random() * ah, Math.random() * 1.6 + 0.4, 0, 7);
+    a.arc(ax + Math.random() * aw, ay + Math.random() * ah, Math.random() * 1.4 + 0.4, 0, 7);
     a.fill();
   }
   const glow = a.createRadialGradient(W / 2, ay + 175, 10, W / 2, ay + 175, 150);
-  glow.addColorStop(0, 'rgba(255,240,200,0.5)');
+  glow.addColorStop(0, 'rgba(255,240,200,0.45)');
   glow.addColorStop(1, 'rgba(255,240,200,0)');
   a.fillStyle = glow;
   a.fillRect(ax, ay, aw, ah);
@@ -172,16 +260,16 @@ function makeTextures() {
   a.textBaseline = 'middle';
   a.fillText('🐶', W / 2, ay + 180);
   a.restore();
-  a.strokeStyle = 'rgba(255,255,255,0.25)';
+  a.strokeStyle = 'rgba(255,255,255,0.22)';
   a.lineWidth = 2;
   rr(a, ax, ay, aw, ah, 10);
   a.stroke();
   a.fillStyle = '#241a3a';
   rr(a, 42, 480, W - 84, 150, 10);
   a.fill();
-  const pipColors = ['#ffd86b', '#7fd8ff', '#ff9ed8'];
+  const pip = ['#ffd86b', '#7fd8ff', '#ff9ed8'];
   for (let i = 0; i < 3; i++) {
-    a.fillStyle = pipColors[i]!;
+    a.fillStyle = pip[i]!;
     a.beginPath();
     a.arc(64 + i * 26, 512, 10, 0, 7);
     a.fill();
@@ -194,8 +282,9 @@ function makeTextures() {
   a.fillText('90', W - 58, 512);
   a.fillStyle = '#b9c0d6';
   a.font = '15px sans-serif';
+  a.textAlign = 'left';
   a.fillText('Flip a coin. If heads, the foil shimmers brighter', 64, 552);
-  a.fillText('and dazzles the defending Pokémon (it can’t attack).', 64, 574);
+  a.fillText('and dazzles the defending Pokémon.', 64, 574);
   a.fillStyle = '#ffe08a';
   a.font = '18px sans-serif';
   a.fillText('★ ULTRA RARE', 46, 672);
@@ -206,7 +295,6 @@ function makeTextures() {
   albedo.colorSpace = THREE.SRGBColorSpace;
   albedo.anisotropy = 8;
 
-  // ---------- holo mask (r: where foil is exposed) ----------
   const fc = document.createElement('canvas');
   fc.width = W;
   fc.height = H;
@@ -217,14 +305,13 @@ function makeTextures() {
   rr(f, 26, 26, W - 52, H - 52, 16);
   f.fill();
   f.fillStyle = '#000';
-  rr(f, 42, 40, W - 84, 46, 10); // name bar matte
+  rr(f, 42, 40, W - 84, 46, 10);
   f.fill();
-  rr(f, 42, 480, W - 84, 150, 10); // attack box matte
+  rr(f, 42, 480, W - 84, 150, 10);
   f.fill();
   const holoMask = new THREE.CanvasTexture(fc);
   holoMask.colorSpace = THREE.NoColorSpace;
 
-  // white-ink mask (r): unused detail → flat black (no ink suppression)
   const wc = document.createElement('canvas');
   wc.width = wc.height = 4;
   const w = wc.getContext('2d')!;
@@ -233,13 +320,13 @@ function makeTextures() {
   const whiteInk = new THREE.CanvasTexture(wc);
   whiteInk.colorSpace = THREE.NoColorSpace;
 
-  const foilPattern = noiseCanvas(256, false);
-  const height = noiseCanvas(256, true);
+  const foilPattern = smoothCanvas(256, 10, 0.0, 1.0); // smooth 0..1 blobs
+  const height = smoothCanvas(256, 24, 0.25, 0.5); // gentle smooth foil relief
+  const emboss = embossNormalMap();
 
-  return { albedo, holoMask, whiteInk, foilPattern, height };
+  return { albedo, holoMask, whiteInk, foilPattern, height, emboss };
 }
 
-// ---- ported holo technique (re-implemented; credit: Isaac Johnson's Ziggy card) ----
 const HOLO_COMMON = /* glsl */ `#include <common>
 uniform sampler2D uHoloMask;
 uniform sampler2D uWhiteInk;
@@ -248,11 +335,12 @@ uniform sampler2D uHeight;
 uniform float uHue, uTshift, uMilk, uSat, uWarp, uLine, uAng;
 uniform float uGlint, uSpark, uSparkDensity, uSparkSize, uBright;
 uniform float uHoloIntensity, uFoilRough, uFoilMetal, uHeightStrength, uMotion;
+uniform float uStageFoil, uStageHolo, uStageLines, uStageGlitter;
 float hHash12(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 vec2 hHash22(vec2 p){ vec3 q = fract(vec3(p.xyx) * vec3(0.1031,0.1030,0.0973)); q += dot(q, q.yzx + 33.33); return fract((q.xx + q.yz) * q.zy); }
 float hNoise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f*f*(3.0-2.0*f);
   return mix(mix(hHash12(i),hHash12(i+vec2(1.,0.)),f.x), mix(hHash12(i+vec2(0.,1.)),hHash12(i+vec2(1.,1.)),f.x), f.y); }
-float hFbm(vec2 p){ float v=0., a=0.5; for(int i=0;i<5;i++){ v+=a*hNoise(p); p=mat2(1.6,1.2,-1.2,1.6)*p; a*=0.5; } return v; }
+float hFbm(vec2 p){ float v=0., a=0.5; for(int i=0;i<4;i++){ v+=a*hNoise(p); p=mat2(1.6,1.2,-1.2,1.6)*p; a*=0.5; } return v; }
 vec2 hN2(vec2 v){ float l=dot(v,v); return l<1e-8 ? vec2(1.,0.) : v*inversesqrt(l); }
 vec3 hN3(vec3 v){ float l=dot(v,v); return l<1e-8 ? vec3(0.,0.,1.) : v*inversesqrt(l); }
 mat3 hTBN(vec3 pos, vec3 n, vec2 uv){ vec3 pdx=dFdx(pos), pdy=dFdy(pos); vec2 udx=dFdx(uv), udy=dFdy(uv);
@@ -268,13 +356,13 @@ float hExposed(vec2 uv){ float m=texture2D(uHoloMask,uv).r; float ink=texture2D(
   return clamp(m*pow(max(1.0-ink,0.0),1.4),0.0,1.0); }`;
 
 const HOLO_ROUGH = /* glsl */ `#include <roughnessmap_fragment>
-roughnessFactor = mix(roughnessFactor, uFoilRough, hExposed(vMapUv));`;
+roughnessFactor = mix(roughnessFactor, uFoilRough, hExposed(vMapUv) * uStageFoil);`;
 
 const HOLO_METAL = /* glsl */ `#include <metalnessmap_fragment>
-metalnessFactor = mix(metalnessFactor, uFoilMetal, hExposed(vMapUv));`;
+metalnessFactor = mix(metalnessFactor, uFoilMetal, hExposed(vMapUv) * uStageFoil);`;
 
 const HOLO_NORMAL = /* glsl */ `#include <normal_fragment_maps>
-{
+if (uStageFoil > 0.5) {
   float hh = texture2D(uHeight, vMapUv).r;
   mat3 tbn = hTBN(-vViewPosition, normal, vMapUv);
   vec2 grad = vec2(dFdx(hh), dFdy(hh));
@@ -282,7 +370,8 @@ const HOLO_NORMAL = /* glsl */ `#include <normal_fragment_maps>
   normal = normalize(tbn * tn);
 }`;
 
-const HOLO_OPAQUE = /* glsl */ `{
+const HOLO_OPAQUE = /* glsl */ `float anyHolo = clamp(uStageHolo + uStageLines + uStageGlitter, 0.0, 1.0);
+if (anyHolo > 0.5) {
   float foilAmt = hExposed(vMapUv);
   vec3 V = hN3(vViewPosition);
   vec3 N = normalize(normal);
@@ -294,73 +383,100 @@ const HOLO_OPAQUE = /* glsl */ `{
   float along = dot(vMapUv - 0.5, dir);
   float across = dot(vMapUv - 0.5, nrm);
   float wv = hFbm(vMapUv * uWarp + vec2(3.1));
-  float hue = along * uHue + dot(tilt, dir) * uTshift + (wv - 0.5) * 1.2;
+  float hue = along * uHue + dot(tilt, dir) * uTshift + (wv - 0.5) * 1.0;
   vec3 sheen = 0.5 + 0.5 * cos(PI2 * (hue + vec3(0.0, 0.33, 0.66)));
   float luma = dot(sheen, vec3(0.299, 0.587, 0.114));
   sheen = mix(vec3(luma), sheen, uSat);
   sheen = mix(sheen, vec3(1.0), uMilk);
   float lines = 0.5 + 0.5 * sin(across * uLine + (wv - 0.5) * 4.0);
   float align = clamp(dot(hN2(tilt), nrm) * 0.5 + 0.5, 0.0, 1.0);
-  float glint = pow(lines, 9.0) * uGlint * (0.25 + 0.75 * align);
+  // softer, wider glint streaks (was pow 9) — no longer overpower the design
+  float glint = pow(lines, 6.0) * uGlint * (0.25 + 0.75 * align) * 0.5;
   vec2 sparkDir = hN2(tilt * 3.0 + vec2(0.2, 0.35));
   vec3 spark = hGlitter(vMapUv * uSparkDensity, sparkDir, 22.0, uSparkSize)
     + hGlitter(vMapUv * uSparkDensity * 2.3 + 11.0, sparkDir, 22.0, uSparkSize) * 0.6;
-  float patMod = mix(0.82, 1.18, texture2D(uFoilPattern, vMapUv * 8.0).r);
-  vec3 foil = sheen * (0.72 + 0.28 * lines) * patMod + vec3(glint);
-  foil += spark * uSpark * (0.7 + uMotion * 0.9);
+  float patMod = mix(0.9, 1.1, texture2D(uFoilPattern, vMapUv * 6.0).r);
+  // each layer toggles independently
+  float lineMix = mix(0.5, lines, uStageLines);
+  vec3 foil = sheen * (0.82 + 0.18 * lineMix) * patMod * uStageHolo;
+  foil += vec3(glint) * uStageLines;
+  foil += spark * uSpark * (0.7 + uMotion * 0.9) * uStageGlitter;
   foil *= uBright * (0.85 + uMotion * 0.55);
   float fres = pow(1.0 - saturate(dot(N, V)), 2.5);
-  float blend = clamp(foilAmt * uHoloIntensity * mix(0.55, 1.0, fres), 0.0, 1.0);
+  float blend = clamp(foilAmt * uHoloIntensity * mix(0.5, 1.0, fres), 0.0, 1.0) * anyHolo;
   outgoingLight = mix(outgoingLight, foil, blend);
 }
 #include <opaque_fragment>`;
 
-function makeMaterials(tex: ReturnType<typeof makeTextures>) {
-  return PRESETS.map((p) => {
-    const m = new THREE.MeshPhysicalMaterial({
-      map: tex.albedo,
-      roughness: 0.52,
-      metalness: 0,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.24,
-      ior: 1.47,
-      envMapIntensity: 1,
-    });
-    m.customProgramCacheKey = () => 'holo-card-ziggy-v1';
-    m.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, {
-        uHoloMask: { value: tex.holoMask },
-        uWhiteInk: { value: tex.whiteInk },
-        uFoilPattern: { value: tex.foilPattern },
-        uHeight: { value: tex.height },
-        uHue: { value: p.hue },
-        uTshift: { value: p.tshift },
-        uMilk: { value: p.milk },
-        uSat: { value: p.sat },
-        uWarp: { value: 2 },
-        uLine: { value: p.line },
-        uAng: { value: (p.ang * Math.PI) / 180 },
-        uGlint: { value: p.glint },
-        uSpark: { value: p.spark },
-        uSparkDensity: { value: p.sparkDensity },
-        uSparkSize: { value: 0.45 },
-        uBright: { value: 1 },
-        uHoloIntensity: { value: 0.85 },
-        uFoilRough: { value: 0.16 },
-        uFoilMetal: { value: 0.72 },
-        uHeightStrength: { value: 6 },
-        uMotion: { value: 0 },
-      });
-      m.userData.shader = shader;
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', HOLO_COMMON)
-        .replace('#include <roughnessmap_fragment>', HOLO_ROUGH)
-        .replace('#include <metalnessmap_fragment>', HOLO_METAL)
-        .replace('#include <normal_fragment_maps>', HOLO_NORMAL)
-        .replace('#include <opaque_fragment>', HOLO_OPAQUE);
-    };
-    return m;
+type HoloTexBundle = {
+  map: THREE.Texture;
+  normalMap: THREE.Texture;
+  holoMask: THREE.Texture;
+  whiteInk: THREE.Texture;
+  foilPattern: THREE.Texture;
+  height: THREE.Texture;
+};
+
+function buildHoloMaterial(tex: HoloTexBundle, p: Preset, opts: { normalScale?: number; heightStrength?: number } = {}) {
+  const m = new THREE.MeshPhysicalMaterial({
+    map: tex.map,
+    normalMap: tex.normalMap,
+    normalScale: new THREE.Vector2(opts.normalScale ?? 1.3, opts.normalScale ?? 1.3),
+    roughness: 0.52,
+    metalness: 0,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.24,
+    ior: 1.47,
+    envMapIntensity: 1,
   });
+  m.customProgramCacheKey = () => 'holo-card-ziggy-v2';
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, {
+      uHoloMask: { value: tex.holoMask },
+      uWhiteInk: { value: tex.whiteInk },
+      uFoilPattern: { value: tex.foilPattern },
+      uHeight: { value: tex.height },
+      uHue: { value: p.hue },
+      uTshift: { value: p.tshift },
+      uMilk: { value: p.milk },
+      uSat: { value: p.sat },
+      uWarp: { value: 2 },
+      uLine: { value: p.line },
+      uAng: { value: (p.ang * Math.PI) / 180 },
+      uGlint: { value: p.glint },
+      uSpark: { value: p.spark },
+      uSparkDensity: { value: p.sparkDensity },
+      uSparkSize: { value: 0.4 },
+      uBright: { value: 1 },
+      uHoloIntensity: { value: 0.6 },
+      uFoilRough: { value: 0.16 },
+      uFoilMetal: { value: 0.72 },
+      uHeightStrength: { value: opts.heightStrength ?? 3 },
+      uMotion: { value: 0 },
+      uStageFoil: { value: 1 },
+      uStageHolo: { value: 1 },
+      uStageLines: { value: 1 },
+      uStageGlitter: { value: 1 },
+    });
+    m.userData.shader = shader;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', HOLO_COMMON)
+      .replace('#include <roughnessmap_fragment>', HOLO_ROUGH)
+      .replace('#include <metalnessmap_fragment>', HOLO_METAL)
+      .replace('#include <normal_fragment_maps>', HOLO_NORMAL)
+      .replace('#include <opaque_fragment>', HOLO_OPAQUE);
+  };
+  return m;
+}
+
+function makeMaterials(tex: ReturnType<typeof makeTextures>) {
+  return PRESETS.map((p) =>
+    buildHoloMaterial(
+      { map: tex.albedo, normalMap: tex.emboss, holoMask: tex.holoMask, whiteInk: tex.whiteInk, foilPattern: tex.foilPattern, height: tex.height },
+      p,
+      { normalScale: 1.3, heightStrength: 3 }
+    )
+  );
 }
 
 function Studio() {
@@ -383,11 +499,11 @@ function Studio() {
   }, [scene, gl]);
   return (
     <>
-      <ambientLight intensity={0.25} />
-      <rectAreaLight ref={k1} args={[0xffffff, 8, 7, 9]} position={[5, 5, 7]} />
-      <rectAreaLight ref={k2} args={[0x9ec3ff, 5, 7, 9]} position={[-6, 2, 6]} />
-      <rectAreaLight ref={rim} args={[0xffd0a0, 6, 5, 7]} position={[0, -4, -5]} />
-      <directionalLight position={[0, 4, 8]} intensity={0.4} />
+      <ambientLight intensity={0.3} />
+      <rectAreaLight ref={k1} args={[0xfff0e0, 6, 7, 9]} position={[5, 5, 7]} />
+      <rectAreaLight ref={k2} args={[0xbcd4ff, 4, 7, 9]} position={[-6, 2, 6]} />
+      <rectAreaLight ref={rim} args={[0xffd0a0, 4, 5, 7]} position={[0, -4, -5]} />
+      <directionalLight position={[0, 4, 8]} intensity={0.45} />
     </>
   );
 }
@@ -400,67 +516,175 @@ function Controls({ children }: { children: ReactNode }) {
   );
 }
 
-function useHolo(shared: Shared, motionRef: { current: number }) {
+function useHolo(
+  shared: Shared,
+  motionRef: { current: number },
+  stageRef: { current: Stage },
+  extraRef?: { current: THREE.MeshPhysicalMaterial | null }
+) {
   useFrame(() => {
-    for (const m of shared.mats) {
+    const st = stageRef.current;
+    const mats = extraRef?.current ? [...shared.mats, extraRef.current] : shared.mats;
+    for (const m of mats) {
       const sh = m.userData.shader as { uniforms: Record<string, THREE.IUniform> } | undefined;
-      if (sh) sh.uniforms.uMotion!.value = motionRef.current;
+      if (!sh) continue;
+      sh.uniforms.uMotion!.value = motionRef.current;
+      sh.uniforms.uStageFoil!.value = st.foil;
+      sh.uniforms.uStageHolo!.value = st.holo;
+      sh.uniforms.uStageLines!.value = st.lines;
+      sh.uniforms.uStageGlitter!.value = st.glitter;
     }
   });
 }
 
-function Card({ shared, presetIndex }: { shared: Shared; presetIndex: number }) {
+function Card({ shared, presetIndex, material }: { shared: Shared; presetIndex: number; material?: THREE.Material | null }) {
   return (
     <>
-      <mesh geometry={shared.core} material={shared.coreMat} position={[0, 0, -0.1]} />
-      <mesh geometry={shared.front} material={shared.mats[presetIndex]!} position={[0, 0, 0.008]} />
+      <mesh geometry={shared.core} material={shared.coreMat} position={[0, 0, -DEPTH / 2]} />
+      <mesh geometry={shared.front} material={material ?? shared.mats[presetIndex]!} position={[0, 0, DEPTH / 2 + 0.002]} />
     </>
   );
 }
 
+// generated-card list — fetched from /cards/manifest.json (gen-card.mjs maintains it)
+type CardEntry = { slug: string; name: string };
+const FALLBACK_CARDS: CardEntry[] = [{ slug: 'energy-surge', name: 'Energy Surge' }];
+
 function HeroMode({ onStats, shared, setMode }: BenchProps & { shared: Shared; setMode: (m: 'grid') => void }) {
   useFps(onStats);
   const [preset, setPreset] = useState(0);
-  const grp = useRef<THREE.Group>(null);
-  const motion = useRef(0);
-  useHolo(shared, motion);
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ emboss: true, foil: true, holo: true, lines: true, glitter: true });
+  const [cards, setCards] = useState<CardEntry[]>(FALLBACK_CARDS);
+  const [cardSlug, setCardSlug] = useState<string | null>(null);
+  const [cardMat, setCardMat] = useState<THREE.MeshPhysicalMaterial | null>(null);
 
+  useEffect(() => {
+    fetch('cards/manifest.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (Array.isArray(j) && j.length) setCards(j);
+      })
+      .catch(() => {});
+  }, []);
+  const cardMatRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
+  cardMatRef.current = cardMat;
+  const motion = useRef(0);
+  const prevQ = useRef(new THREE.Quaternion());
+  const stageRef = useRef<Stage>({ foil: 1, holo: 1, lines: 1, glitter: 1 });
+  useHolo(shared, motion, stageRef, cardMatRef);
+
+  // load a generated card's texture set (albedo + combined-emboss normal + holo mask)
+  useEffect(() => {
+    if (!cardSlug) {
+      setCardMat((prev) => {
+        prev?.dispose();
+        return null;
+      });
+      return;
+    }
+    let alive = true;
+    const L = new THREE.TextureLoader();
+    Promise.all([
+      L.loadAsync(`cards/${cardSlug}/albedo.png`),
+      L.loadAsync(`cards/${cardSlug}/normal.png`),
+      L.loadAsync(`cards/${cardSlug}/holo.png`),
+    ])
+      .then(([al, no, ho]) => {
+        if (!alive) return;
+        al.colorSpace = THREE.SRGBColorSpace;
+        al.anisotropy = 8;
+        no.colorSpace = THREE.NoColorSpace;
+        ho.colorSpace = THREE.NoColorSpace;
+        const mat = buildHoloMaterial(
+          { map: al, normalMap: no, holoMask: ho, whiteInk: shared.tex.whiteInk, foilPattern: shared.tex.foilPattern, height: shared.tex.height },
+          PRESETS[0]!,
+          { normalScale: layers.emboss ? 1.0 : 0, heightStrength: 1.2 }
+        );
+        setCardMat((prev) => {
+          prev?.dispose();
+          return mat;
+        });
+      })
+      .catch((e) => console.error('card load failed', e));
+    return () => {
+      alive = false;
+    };
+  }, [cardSlug, shared, layers.emboss]);
+
+  useEffect(() => {
+    stageRef.current = {
+      foil: layers.foil ? 1 : 0,
+      holo: layers.holo ? 1 : 0,
+      lines: layers.lines ? 1 : 0,
+      glitter: layers.glitter ? 1 : 0,
+    };
+    const ns = layers.emboss ? 1.3 : 0;
+    shared.mats.forEach((m) => m.normalScale.set(ns, ns));
+    if (cardMatRef.current) cardMatRef.current.normalScale.set(layers.emboss ? 1.0 : 0, layers.emboss ? 1.0 : 0);
+  }, [layers, shared, cardMat]);
+
+  // motion = camera angular velocity (orbit/auto-rotate) → lifts sparkle while moving
   useFrame((state, dt) => {
-    const g = grp.current;
-    if (!g) return;
-    const k = Math.min(1, dt * 3.5);
-    const sway = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
-    const ty = state.pointer.x * 0.85 + sway;
-    const tx = -state.pointer.y * 0.6;
-    const d = Math.abs(ty - g.rotation.y) + Math.abs(tx - g.rotation.x);
-    motion.current += (Math.min(1, d * 6) - motion.current) * Math.min(1, dt * 4);
-    g.rotation.y += (ty - g.rotation.y) * k;
-    g.rotation.x += (tx - g.rotation.x) * k;
+    const q = state.camera.quaternion;
+    const d = Math.min(1, Math.abs(prevQ.current.dot(q)));
+    const vel = (2 * Math.acos(d)) / Math.max(dt, 1e-3);
+    motion.current += (Math.min(1, vel * 0.5) - motion.current) * Math.min(1, dt * 4);
+    prevQ.current.copy(q);
   });
+
+  const toggle = (k: LayerKey) => setLayers((p) => ({ ...p, [k]: !p[k] }));
 
   return (
     <>
-      <color attach="background" args={['#060710']} />
+      <color attach="background" args={['#070811']} />
       <Studio />
-      <group ref={grp} scale={2.1}>
-        <Card shared={shared} presetIndex={preset} />
+      <group scale={2.6}>
+        <Card shared={shared} presetIndex={preset} material={cardMat} />
       </group>
       <EffectComposer>
-        <Bloom intensity={0.7} luminanceThreshold={0.62} luminanceSmoothing={0.25} mipmapBlur />
-        <ChromaticAberration radialModulation={false} modulationOffset={0} offset={new THREE.Vector2(0.0007, 0.0007)} />
-        <Vignette eskil={false} offset={0.25} darkness={0.72} />
+        <Bloom intensity={0.45} luminanceThreshold={0.72} luminanceSmoothing={0.3} mipmapBlur />
+        <Vignette eskil={false} offset={0.28} darkness={0.7} />
       </EffectComposer>
+      <OrbitControls
+        enablePan={false}
+        target={[0, 0, 0]}
+        autoRotate
+        autoRotateSpeed={0.4}
+        minDistance={6}
+        maxDistance={18}
+        minPolarAngle={0.5}
+        maxPolarAngle={Math.PI - 0.5}
+      />
       <Controls>
-        <button type="button" onClick={() => setMode('grid')}>
-          ▦ grid bench
-        </button>
         <div className="holo-presets">
-          {PRESETS.map((p, i) => (
-            <button key={p.name} type="button" className={i === preset ? 'on' : ''} onClick={() => setPreset(i)}>
-              {p.name}
+          <button type="button" className={!cardSlug ? 'on' : ''} onClick={() => setCardSlug(null)}>
+            Procedural
+          </button>
+          {cards.map((cd) => (
+            <button key={cd.slug} type="button" className={cardSlug === cd.slug ? 'on' : ''} onClick={() => setCardSlug(cd.slug)}>
+              {cd.name}
             </button>
           ))}
         </div>
+        <div className="holo-presets">
+          {LAYERS.map((l) => (
+            <button key={l.key} type="button" className={layers[l.key] ? 'on' : ''} onClick={() => toggle(l.key)}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+        {!cardSlug ? (
+          <div className="holo-presets">
+            {PRESETS.map((p, i) => (
+              <button key={p.name} type="button" className={i === preset ? 'on' : ''} onClick={() => setPreset(i)}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <button type="button" onClick={() => setMode('grid')}>
+          ▦ grid bench
+        </button>
       </Controls>
     </>
   );
@@ -471,14 +695,15 @@ function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Sh
   const groups = useRef<THREE.Group[]>([]);
   const filled = useRef(0);
   const motion = useRef(0.4);
-  useHolo(shared, motion);
+  const stageRef = useRef<Stage>({ foil: 1, holo: 1, lines: 1, glitter: 1 });
+  useHolo(shared, motion, stageRef);
 
   const layout = () => {
     const nn = groups.current.length;
     const cols = Math.max(1, Math.ceil(Math.sqrt(nn)));
     const rows = Math.ceil(nn / cols);
-    const sx = 2.9;
-    const sy = 4.0;
+    const sx = 2.6;
+    const sy = 3.5;
     for (let i = 0; i < nn; i++) {
       groups.current[i]!.position.set(((i % cols) - (cols - 1) / 2) * sx, ((rows - 1) / 2 - Math.floor(i / cols)) * sy, 0);
     }
@@ -492,10 +717,10 @@ function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Sh
     for (let i = filled.current; i < count; i++) {
       const card = new THREE.Group();
       const coreM = new THREE.Mesh(shared.core, shared.coreMat);
-      coreM.position.z = -0.1;
+      coreM.position.z = -DEPTH / 2;
       coreM.frustumCulled = false;
       const frontM = new THREE.Mesh(shared.front, shared.mats[i % shared.mats.length]!);
-      frontM.position.z = 0.008;
+      frontM.position.z = DEPTH / 2 + 0.002;
       frontM.frustumCulled = false;
       card.add(coreM, frontM);
       groups.current.push(card);
@@ -507,22 +732,15 @@ function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Sh
 
   useRamp({ target: 50, step: 6, max: 1000, start: 6, grow, onStats, runId });
 
-  useFrame((state, dt) => {
-    const g = grp.current;
-    if (!g) return;
-    const k = Math.min(1, dt * 3);
-    g.rotation.y += (state.pointer.x * 0.4 - g.rotation.y) * k;
-    g.rotation.x += (-state.pointer.y * 0.3 - g.rotation.x) * k;
-  });
-
   return (
     <>
-      <color attach="background" args={['#060710']} />
+      <color attach="background" args={['#070811']} />
       <Studio />
       <group ref={grp} />
       <EffectComposer>
-        <Bloom intensity={0.65} luminanceThreshold={0.62} mipmapBlur />
+        <Bloom intensity={0.4} luminanceThreshold={0.72} mipmapBlur />
       </EffectComposer>
+      <OrbitControls enablePan={false} autoRotate autoRotateSpeed={0.2} minDistance={6} maxDistance={40} />
       <Controls>
         <button type="button" onClick={() => setMode('hero')}>
           ◆ hero card
@@ -537,14 +755,11 @@ export function HoloCardsBench({ onStats, runId }: BenchProps) {
   const shared = useMemo<Shared>(() => {
     const tex = makeTextures();
     const mats = makeMaterials(tex);
-    const front = new THREE.ShapeGeometry(roundedRectShape(CW, CH, RAD), 16);
-    remapUV(front, CW, CH);
-    const core = new THREE.ExtrudeGeometry(roundedRectShape(CW + 0.12, CH + 0.12, RAD + 0.03), {
-      depth: 0.1,
-      bevelEnabled: false,
-    });
-    const coreMat = new THREE.MeshStandardMaterial({ color: '#0b0b16', roughness: 0.55, metalness: 0.25 });
-    return { front, core, mats, coreMat, textures: [tex.albedo, tex.holoMask, tex.whiteInk, tex.foilPattern, tex.height] };
+    const front = new THREE.ShapeGeometry(roundedRectShape(CW - 0.04, CH - 0.04, RAD - 0.02), 16);
+    remapUV(front, CW - 0.04, CH - 0.04);
+    const core = new THREE.ExtrudeGeometry(roundedRectShape(CW, CH, RAD), { depth: DEPTH, bevelEnabled: false });
+    const coreMat = new THREE.MeshStandardMaterial({ color: '#0a0a12', roughness: 0.5, metalness: 0.15 });
+    return { front, core, mats, coreMat, tex, textures: [tex.albedo, tex.holoMask, tex.whiteInk, tex.foilPattern, tex.height, tex.emboss] };
   }, []);
 
   useEffect(() => {

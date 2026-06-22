@@ -1,0 +1,9 @@
+{
+  "id": 39,
+  "name": "Energy Surge",
+  "profession": "Mesmer",
+  "typeLine": "Elite Spell — Domination Magic",
+  "rarity": "Mythic",
+  "elite": true,
+  "slug": "energy-surge"
+}

@@ -1,0 +1,9 @@
+{
+  "id": 185,
+  "name": "Mind Burn",
+  "profession": "Elementalist",
+  "typeLine": "Elite Spell — Fire Magic",
+  "rarity": "Mythic",
+  "elite": true,
+  "slug": "mind-burn"
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "slug": "energy-surge",
+    "name": "Energy Surge",
+    "profession": "Mesmer",
+    "typeLine": "Elite Spell — Domination Magic",
+    "elite": true
+  },
+  {
+    "slug": "mind-burn",
+    "name": "Mind Burn",
+    "profession": "Elementalist",
+    "typeLine": "Elite Spell — Fire Magic",
+    "elite": true
+  }
+]
