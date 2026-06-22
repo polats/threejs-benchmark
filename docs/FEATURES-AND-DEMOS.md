@@ -38,7 +38,7 @@ canvas + `WebGPURenderer`) for the two WebGPU/TSL benches._
 | Water / ocean | ✅ | Ocean (`Water` + procedural `Sky`) + TSL Sea |
 | Advanced post (SSAO/DOF/bloom) | ✅ | SSAO + DoF (N8AO + DepthOfField + Bloom) |
 | Morph targets, fat lines, 3D text | ✅ | Morph Targets · Fat Lines · 3D Text |
-| Volumetrics (clouds, volumetric light) | ⚠️ partial | Raymarch is a fractal; true volumetrics still open |
+| Volumetrics (clouds, volumetric light) | ✅ | Volumetric Clouds (raymarched 3D-fbm density + light-march scattering) |
 | CSM / RectAreaLight / clustered, SSR/SSGI, decals, caustics | ❌ | not yet (lower priority) |
 
 ### WebGL2 vs WebGPU split (matters for the suite)

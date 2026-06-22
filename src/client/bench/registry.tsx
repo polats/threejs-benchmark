@@ -23,6 +23,7 @@ import { MetaballsBench } from './benches/MetaballsBench';
 import { BoidsBench } from './benches/BoidsBench';
 import { FractureBench } from './benches/FractureBench';
 import { ClothBench } from './benches/ClothBench';
+import { VolumeCloudsBench } from './benches/VolumeCloudsBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -116,6 +117,14 @@ export const BENCHES: BenchDef[] = [
     group: 'visual',
     blurb: 'Fullscreen Mandelbulb sphere-tracer — ramp the march steps',
     Component: RaymarchBench,
+  },
+  {
+    id: 'volume-clouds',
+    label: 'Volumetric Clouds',
+    unit: 'steps',
+    group: 'visual',
+    blurb: 'Raymarched 3D-fbm cloud volume with light-march self-shadowing — ramp the step budget',
+    Component: VolumeCloudsBench,
   },
   {
     id: 'tsl-sea',
