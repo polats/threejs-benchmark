@@ -26,6 +26,7 @@ import { ClothBench } from './benches/ClothBench';
 import { VolumeCloudsBench } from './benches/VolumeCloudsBench';
 import { TrailsBench } from './benches/TrailsBench';
 import { LightStormBench } from './benches/LightStormBench';
+import { HoloCardsBench } from './benches/HoloCardsBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -255,5 +256,14 @@ export const BENCHES: BenchDef[] = [
     blurb: 'Reflective ocean (Water + procedural Sky) — re-renders the scene each frame',
     showcase: true,
     Component: OceanBench,
+  },
+  {
+    id: 'holo-cards',
+    label: 'Holo Cards',
+    unit: 'cards',
+    group: 'showcase',
+    blurb: 'Holographic foil cards (iridescence + onBeforeCompile shimmer/glitter, RectAreaLight) — hero card or a ramping grid',
+    showcase: true,
+    Component: HoloCardsBench,
   },
 ];

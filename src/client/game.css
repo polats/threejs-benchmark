@@ -304,3 +304,42 @@ canvas {
   opacity: 0.6;
   font-size: 12px;
 }
+
+/* Holo Cards in-scene controls (drei Html overlay) */
+.holo-ui {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.holo-ui button {
+  pointer-events: auto;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(9, 12, 20, 0.72);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.holo-ui button:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.holo-ui button.on {
+  background: linear-gradient(180deg, #8fd0ff, #4aa3ff);
+  color: #06203a;
+  border-color: transparent;
+}
+.holo-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
