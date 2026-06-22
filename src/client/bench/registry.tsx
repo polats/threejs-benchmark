@@ -21,6 +21,7 @@ import { MorphBench } from './benches/MorphBench';
 import { TextBench } from './benches/TextBench';
 import { MetaballsBench } from './benches/MetaballsBench';
 import { BoidsBench } from './benches/BoidsBench';
+import { FractureBench } from './benches/FractureBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -182,6 +183,15 @@ export const BENCHES: BenchDef[] = [
     blurb: 'Marching-cubes mercury blobs that merge and split, polygonized each frame',
     showcase: true,
     Component: MetaballsBench,
+  },
+  {
+    id: 'fracture',
+    label: 'Fracture',
+    unit: '',
+    group: 'simulation',
+    blurb: 'A cube pre-fractured into convex shards (Rapier) that detonate + re-assemble on a loop',
+    showcase: true,
+    Component: FractureBench,
   },
   {
     id: 'crowd',
