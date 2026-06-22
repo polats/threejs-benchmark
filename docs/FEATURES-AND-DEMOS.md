@@ -153,11 +153,18 @@ like Ammo).
   https://pmneila.github.io/jsexp/grayscott/ — mesmerizing fill-rate stress. 🟢 WebGL2.
 - **Protoplanet / n-body** (`webgl_gpgpu_protoplanet`): https://threejs.org/examples/webgl_gpgpu_protoplanet.html
 
-### Shortlist to build next (impressiveness × feasibility)
-1. **Voronoi/convex Fracture** (ConvexObjectBreaker + Rapier) — highest wow, WebGL2, reuses Rapier.
-2. **Marching-Cubes Metaballs** — lowest cost, pure WebGL2, pairs with the glass material.
-3. **GPGPU Boids** — flocking-at-scale, reuses our GPGPU code.
-4. **WebGPU softbodies / cloth** — the novel WebGPU-tier add (holtsetio XPBD jelly and/or `webgpu_compute_cloth`).
+### Shortlist — built (the **Simulation** group + extras)
+1. ✅ **Fracture** (ConvexObjectBreaker + Rapier) — convex shards detonate + re-assemble.
+2. ✅ **Marching-Cubes Metaballs** — mercury blobs under a RoomEnvironment.
+3. ✅ **GPGPU Boids** — flocking on the GPGPU plumbing; scales to tens of thousands.
+4. ✅ **Cloth** — WebGL2 verlet cloth in wind (the WebGPU TSL compute-cloth/softbody stays the future gated-tier add).
+5. ✅ **Volumetric Clouds** — raymarched 3D-fbm volume + light-march scattering (closes the volumetrics gap).
+6. ✅ **Ribbon Trails** — swirl-field swarm with fading additive trails.
+7. ✅ **Light Storm** — many moving point lights, no shadows (forward light-loop stress).
 
-(Lower priority / skipped: Ammo-based cloth/volume/rope/break — they force a second
-vendored WASM + `wasm-unsafe-eval`; raw-WebGPU fluids — hard to port into three/R3F.)
+→ The suite is now **27 benches across 5 groups** (Rendering · Visual · Physics ·
+Simulation · Showcase). Still open / lower priority: WebGPU softbodies/cloth (TSL
+compute, can't verify headlessly), reaction-diffusion, decals, SSR/SSGI, caustics.
+
+(Skipped: Ammo-based cloth/volume/rope/break — second vendored WASM + `wasm-unsafe-eval`;
+raw-WebGPU fluids — hard to port into three/R3F.)
