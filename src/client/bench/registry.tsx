@@ -9,6 +9,7 @@ import { RapierBench } from './benches/RapierBench';
 import { GltfCrowdBench } from './benches/GltfCrowdBench';
 import { SplatBench } from './benches/SplatBench';
 import { WebGPUParticlesBench } from './benches/WebGPUParticlesBench';
+import { WebGPUSeaBench } from './benches/WebGPUSeaBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -62,6 +63,16 @@ export const BENCHES: BenchDef[] = [
     group: 'visual',
     blurb: 'Fullscreen Mandelbulb sphere-tracer — ramp the march steps',
     Component: RaymarchBench,
+  },
+  {
+    id: 'tsl-sea',
+    label: 'TSL Sea',
+    unit: '',
+    group: 'visual',
+    blurb: 'Procedural ocean via a TSL node material — runs on WebGPU + WebGL2; toggle to compare',
+    showcase: true,
+    webgpu: true,
+    Component: WebGPUSeaBench,
   },
   {
     id: 'physics-cannon',
