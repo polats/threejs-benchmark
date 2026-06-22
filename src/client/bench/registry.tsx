@@ -22,6 +22,7 @@ import { TextBench } from './benches/TextBench';
 import { MetaballsBench } from './benches/MetaballsBench';
 import { BoidsBench } from './benches/BoidsBench';
 import { FractureBench } from './benches/FractureBench';
+import { ClothBench } from './benches/ClothBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -192,6 +193,15 @@ export const BENCHES: BenchDef[] = [
     blurb: 'A cube pre-fractured into convex shards (Rapier) that detonate + re-assemble on a loop',
     showcase: true,
     Component: FractureBench,
+  },
+  {
+    id: 'cloth',
+    label: 'Cloth',
+    unit: '',
+    group: 'simulation',
+    blurb: 'Verlet cloth blown by wind — structural + shear constraints relaxed each frame',
+    showcase: true,
+    Component: ClothBench,
   },
   {
     id: 'crowd',
