@@ -3,6 +3,8 @@ import { Canvas } from '@react-three/fiber';
 import { BENCHES } from '../bench/registry';
 import type { RampState } from '../bench/types';
 import { Sidebar } from './Sidebar';
+import { HoloControlsPanel } from './HoloControlsPanel';
+import { useHoloStore } from '../bench/holoStore';
 import { bridge } from '../devvit-bridge';
 import { APP_VERSION, BUILD_TIME } from '../build-info';
 
@@ -21,6 +23,9 @@ export function App() {
   const active = BENCHES.find((b) => b.id === activeId) ?? BENCHES[0]!;
   const Bench = active.Component;
   const isWebGPU = active.webgpu === true;
+  const holoActive = active.id === 'holo-cards';
+  const holoView = useHoloStore((s) => s.view);
+  const holoSlug = useHoloStore((s) => s.cardSlug);
 
   const select = useCallback((id: string) => {
     setActiveId(id);
@@ -80,7 +85,15 @@ export function App() {
         onSelect={select}
         onRestart={restart}
         onToggle={() => setCollapsed(true)}
+        extra={holoActive ? <HoloControlsPanel /> : undefined}
       />
+
+      {holoActive && holoView !== '3d' && holoSlug ? (
+        <div className="holo-mapview">
+          <img src={`cards/${holoSlug}/${holoView}.png`} alt={holoView} />
+          <span>{holoView}</span>
+        </div>
+      ) : null}
 
       {collapsed ? (
         <button

@@ -7,6 +7,13 @@
     "elite": true
   },
   {
+    "slug": "eviscerate",
+    "name": "Eviscerate",
+    "profession": "Warrior",
+    "typeLine": "Elite Attack — Axe Mastery",
+    "elite": true
+  },
+  {
     "slug": "mind-burn",
     "name": "Mind Burn",
     "profession": "Elementalist",

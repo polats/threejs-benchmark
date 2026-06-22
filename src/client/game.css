@@ -305,41 +305,103 @@ canvas {
   font-size: 12px;
 }
 
-/* Holo Cards in-scene controls (drei Html overlay) */
-.holo-ui {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
+/* Holo Cards — real-DOM control panel inside the sidebar (mobile-friendly) */
+.holo-panel {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
-.holo-ui button {
-  pointer-events: auto;
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.holo-panel > h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4aa3ff;
+}
+.hp-label {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b93a7;
+}
+.holo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hp-chip {
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: rgba(9, 12, 20, 0.72);
-  backdrop-filter: blur(6px);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cfd6e0;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.holo-ui button:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+.hp-chip:active {
+  transform: scale(0.96);
 }
-.holo-ui button.on {
+.hp-chip.on {
   background: linear-gradient(180deg, #8fd0ff, #4aa3ff);
   color: #06203a;
   border-color: transparent;
 }
-.holo-presets {
+.holo-sliders2 {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
+}
+.hp-slider {
+  display: grid;
+  grid-template-columns: 58px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #cfd6e0;
+}
+.hp-slider input[type='range'] {
+  width: 100%;
+  height: 26px;
+  accent-color: #8fd0ff;
+  cursor: pointer;
+  touch-action: none;
+}
+.hp-slider em {
+  font-style: normal;
+  text-align: right;
+  color: #8fd0ff;
+  font-variant-numeric: tabular-nums;
+}
+.hp-note {
+  font-size: 12px;
+  color: #8b93a7;
+  line-height: 1.5;
+}
+.holo-mapview {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+  background: #04050a;
+}
+.holo-mapview img {
+  max-height: 78vh;
+  max-width: 60vw;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+.holo-mapview span {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8fd0ff;
 }

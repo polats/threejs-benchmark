@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Html, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { useRamp } from '../useRamp';
 import { useFps } from '../useFps';
+import { useHoloStore, PRESETS, TUNE_DEFAULTS, type Preset } from '../holoStore';
 import type { BenchProps } from '../types';
 
 // Holographic trading cards — built up in stages, following Isaac Johnson's
@@ -25,24 +26,6 @@ const CH = 3.08;
 const RAD = 0.12;
 const DEPTH = 0.06;
 
-type LayerKey = 'emboss' | 'foil' | 'holo' | 'lines' | 'glitter';
-const LAYERS: { key: LayerKey; label: string }[] = [
-  { key: 'emboss', label: 'Emboss' },
-  { key: 'foil', label: 'Foil' },
-  { key: 'holo', label: 'Sheen' },
-  { key: 'lines', label: 'Lines' },
-  { key: 'glitter', label: 'Glitter' },
-];
-
-type Preset = { name: string; hue: number; tshift: number; milk: number; sat: number; line: number; ang: number; glint: number; spark: number; sparkDensity: number };
-const PRESETS: Preset[] = [
-  { name: 'Rainbow Rare', hue: 1.4, tshift: 1.8, milk: 0.4, sat: 0.85, line: 70, ang: 23, glint: 0.3, spark: 0.55, sparkDensity: 55 },
-  { name: 'Cosmos', hue: 2.1, tshift: 2.4, milk: 0.28, sat: 0.95, line: 55, ang: 12, glint: 0.22, spark: 0.9, sparkDensity: 80 },
-  { name: 'Line Holo', hue: 1.0, tshift: 1.3, milk: 0.35, sat: 0.8, line: 95, ang: 8, glint: 0.34, spark: 0.16, sparkDensity: 40 },
-  { name: 'Reverse', hue: 1.5, tshift: 1.8, milk: 0.52, sat: 0.78, line: 55, ang: 60, glint: 0.28, spark: 0.6, sparkDensity: 65 },
-];
-
-type Stage = { foil: number; holo: number; lines: number; glitter: number };
 type Shared = {
   front: THREE.ShapeGeometry;
   core: THREE.ExtrudeGeometry;
@@ -50,6 +33,7 @@ type Shared = {
   coreMat: THREE.MeshStandardMaterial;
   textures: THREE.Texture[];
   tex: ReturnType<typeof makeTextures>;
+  backMat: THREE.MeshStandardMaterial;
 };
 
 function roundedRectShape(w: number, h: number, r: number) {
@@ -149,13 +133,13 @@ function embossNormalMap() {
   h.textBaseline = 'middle';
   h.font = 'bold 26px sans-serif';
   h.textAlign = 'left';
-  h.fillText('Ziggy', 58, 64);
+  h.fillText('Ember Drake', 58, 64);
   h.font = 'bold 24px sans-serif';
   h.textAlign = 'right';
   h.fillText('HP 120', W - 58, 64);
   h.font = 'bold 22px sans-serif';
   h.textAlign = 'left';
-  h.fillText('Prism Beam', 150, 512);
+  h.fillText('Dragonfire', 150, 512);
   h.textAlign = 'right';
   h.fillText('90', W - 58, 512);
   h.font = '18px sans-serif';
@@ -199,6 +183,77 @@ function embossNormalMap() {
   return t;
 }
 
+// Shared ornate card back (original design) used by every card.
+function makeCardBack() {
+  const W = 512;
+  const H = 716;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const x = c.getContext('2d')!;
+  const bg = x.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, 430);
+  bg.addColorStop(0, '#241a52');
+  bg.addColorStop(0.6, '#140e30');
+  bg.addColorStop(1, '#08060f');
+  x.fillStyle = bg;
+  x.fillRect(0, 0, W, H);
+  const g = x.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#caa24a');
+  g.addColorStop(0.5, '#f3e08a');
+  g.addColorStop(1, '#9a7a2e');
+  x.strokeStyle = g;
+  x.lineWidth = 14;
+  rr(x, 16, 16, W - 32, H - 32, 26);
+  x.stroke();
+  x.lineWidth = 2;
+  x.strokeStyle = 'rgba(255,255,255,0.22)';
+  rr(x, 30, 30, W - 60, H - 60, 18);
+  x.stroke();
+  x.save();
+  x.translate(W / 2, H / 2);
+  for (let i = 0; i < 5; i++) {
+    x.beginPath();
+    x.arc(0, 0, 60 + i * 26, 0, 7);
+    x.strokeStyle = `rgba(243,224,138,${0.1 + i * 0.02})`;
+    x.lineWidth = 2;
+    x.stroke();
+  }
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    x.beginPath();
+    x.moveTo(Math.cos(a) * 64, Math.sin(a) * 64);
+    x.lineTo(Math.cos(a) * 184, Math.sin(a) * 184);
+    x.strokeStyle = 'rgba(243,224,138,0.06)';
+    x.lineWidth = 1.5;
+    x.stroke();
+  }
+  const eg = x.createRadialGradient(0, 0, 2, 0, 0, 86);
+  eg.addColorStop(0, 'rgba(150,120,255,0.6)');
+  eg.addColorStop(1, 'rgba(150,120,255,0)');
+  x.fillStyle = eg;
+  x.beginPath();
+  x.arc(0, 0, 86, 0, 7);
+  x.fill();
+  x.fillStyle = '#f3e08a';
+  x.font = 'bold 120px serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('✦', 0, 6);
+  x.restore();
+  x.fillStyle = '#e7d9a0';
+  x.font = 'bold 28px serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('T I N Y   A R M Y', W / 2, 92);
+  x.font = '15px serif';
+  x.fillStyle = 'rgba(231,217,160,0.65)';
+  x.fillText('TRADING CARD', W / 2, H - 92);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
 function makeTextures() {
   const W = 512;
   const H = 716;
@@ -226,7 +281,7 @@ function makeTextures() {
   a.font = 'bold 26px sans-serif';
   a.textAlign = 'left';
   a.textBaseline = 'middle';
-  a.fillText('Ziggy', 58, 64);
+  a.fillText('Ember Drake', 58, 64);
   a.fillStyle = '#ffffff';
   a.font = 'bold 24px sans-serif';
   a.textAlign = 'right';
@@ -258,7 +313,7 @@ function makeTextures() {
   a.font = '200px serif';
   a.textAlign = 'center';
   a.textBaseline = 'middle';
-  a.fillText('🐶', W / 2, ay + 180);
+  a.fillText('🐉', W / 2, ay + 180);
   a.restore();
   a.strokeStyle = 'rgba(255,255,255,0.22)';
   a.lineWidth = 2;
@@ -277,14 +332,14 @@ function makeTextures() {
   a.fillStyle = '#ffffff';
   a.font = 'bold 22px sans-serif';
   a.textAlign = 'left';
-  a.fillText('Prism Beam', 150, 512);
+  a.fillText('Dragonfire', 150, 512);
   a.textAlign = 'right';
   a.fillText('90', W - 58, 512);
   a.fillStyle = '#b9c0d6';
   a.font = '15px sans-serif';
   a.textAlign = 'left';
-  a.fillText('Flip a coin. If heads, the foil shimmers brighter', 64, 552);
-  a.fillText('and dazzles the defending Pokémon.', 64, 574);
+  a.fillText('Deals 90 damage. If the foil ignites, the target', 64, 552);
+  a.fillText('burns for 20 more at the start of your next turn.', 64, 574);
   a.fillStyle = '#ffe08a';
   a.font = '18px sans-serif';
   a.fillText('★ ULTRA RARE', 46, 672);
@@ -323,8 +378,9 @@ function makeTextures() {
   const foilPattern = smoothCanvas(256, 10, 0.0, 1.0); // smooth 0..1 blobs
   const height = smoothCanvas(256, 24, 0.25, 0.5); // gentle smooth foil relief
   const emboss = embossNormalMap();
+  const cardBack = makeCardBack();
 
-  return { albedo, holoMask, whiteInk, foilPattern, height, emboss };
+  return { albedo, holoMask, whiteInk, foilPattern, height, emboss, cardBack };
 }
 
 const HOLO_COMMON = /* glsl */ `#include <common>
@@ -500,7 +556,7 @@ function Studio() {
   return (
     <>
       <ambientLight intensity={0.3} />
-      <rectAreaLight ref={k1} args={[0xfff0e0, 6, 7, 9]} position={[5, 5, 7]} />
+      <rectAreaLight ref={k1} args={[0xfff0e0, 9, 7, 9]} position={[6, 6, 6]} />
       <rectAreaLight ref={k2} args={[0xbcd4ff, 4, 7, 9]} position={[-6, 2, 6]} />
       <rectAreaLight ref={rim} args={[0xffd0a0, 4, 5, 7]} position={[0, -4, -5]} />
       <directionalLight position={[0, 4, 8]} intensity={0.45} />
@@ -508,31 +564,27 @@ function Studio() {
   );
 }
 
-function Controls({ children }: { children: ReactNode }) {
-  return (
-    <Html fullscreen style={{ pointerEvents: 'none' }}>
-      <div className="holo-ui">{children}</div>
-    </Html>
-  );
-}
-
-function useHolo(
-  shared: Shared,
-  motionRef: { current: number },
-  stageRef: { current: Stage },
-  extraRef?: { current: THREE.MeshPhysicalMaterial | null }
-) {
+// Drives the shader uniforms + normalScale every frame from the store (no React
+// re-render on slider drag), for all preset mats plus an optional loaded-card mat.
+function useHolo(shared: Shared, motionRef: { current: number }, extraRef?: { current: THREE.MeshPhysicalMaterial | null }) {
   useFrame(() => {
-    const st = stageRef.current;
+    const { tune: tn, layers } = useHoloStore.getState();
     const mats = extraRef?.current ? [...shared.mats, extraRef.current] : shared.mats;
     for (const m of mats) {
       const sh = m.userData.shader as { uniforms: Record<string, THREE.IUniform> } | undefined;
       if (!sh) continue;
-      sh.uniforms.uMotion!.value = motionRef.current;
-      sh.uniforms.uStageFoil!.value = st.foil;
-      sh.uniforms.uStageHolo!.value = st.holo;
-      sh.uniforms.uStageLines!.value = st.lines;
-      sh.uniforms.uStageGlitter!.value = st.glitter;
+      const u = sh.uniforms;
+      u.uMotion!.value = motionRef.current;
+      u.uStageFoil!.value = layers.foil ? 1 : 0;
+      u.uStageHolo!.value = layers.holo ? 1 : 0;
+      u.uStageLines!.value = layers.lines ? 1 : 0;
+      u.uStageGlitter!.value = layers.glitter ? 1 : 0;
+      u.uHoloIntensity!.value = tn.holoIntensity;
+      u.uSpark!.value = tn.spark;
+      u.uGlint!.value = tn.glint;
+      u.uFoilMetal!.value = tn.foilMetal;
+      u.uFoilRough!.value = tn.foilRough;
+      m.normalScale.set(tn.normal, tn.normal);
     }
   });
 }
@@ -542,36 +594,22 @@ function Card({ shared, presetIndex, material }: { shared: Shared; presetIndex: 
     <>
       <mesh geometry={shared.core} material={shared.coreMat} position={[0, 0, -DEPTH / 2]} />
       <mesh geometry={shared.front} material={material ?? shared.mats[presetIndex]!} position={[0, 0, DEPTH / 2 + 0.002]} />
+      <mesh geometry={shared.front} material={shared.backMat} position={[0, 0, -DEPTH / 2 - 0.002]} rotation={[0, Math.PI, 0]} />
     </>
   );
 }
 
-// generated-card list — fetched from /cards/manifest.json (gen-card.mjs maintains it)
-type CardEntry = { slug: string; name: string };
-const FALLBACK_CARDS: CardEntry[] = [{ slug: 'energy-surge', name: 'Energy Surge' }];
-
-function HeroMode({ onStats, shared, setMode }: BenchProps & { shared: Shared; setMode: (m: 'grid') => void }) {
+function HeroMode({ onStats, shared }: BenchProps & { shared: Shared }) {
   useFps(onStats);
-  const [preset, setPreset] = useState(0);
-  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ emboss: true, foil: true, holo: true, lines: true, glitter: true });
-  const [cards, setCards] = useState<CardEntry[]>(FALLBACK_CARDS);
-  const [cardSlug, setCardSlug] = useState<string | null>(null);
+  const cardSlug = useHoloStore((s) => s.cardSlug);
+  const view = useHoloStore((s) => s.view);
+  const preset = useHoloStore((s) => s.preset);
   const [cardMat, setCardMat] = useState<THREE.MeshPhysicalMaterial | null>(null);
-
-  useEffect(() => {
-    fetch('cards/manifest.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (Array.isArray(j) && j.length) setCards(j);
-      })
-      .catch(() => {});
-  }, []);
   const cardMatRef = useRef<THREE.MeshPhysicalMaterial | null>(null);
   cardMatRef.current = cardMat;
   const motion = useRef(0);
   const prevQ = useRef(new THREE.Quaternion());
-  const stageRef = useRef<Stage>({ foil: 1, holo: 1, lines: 1, glitter: 1 });
-  useHolo(shared, motion, stageRef, cardMatRef);
+  useHolo(shared, motion, cardMatRef);
 
   // load a generated card's texture set (albedo + combined-emboss normal + holo mask)
   useEffect(() => {
@@ -598,7 +636,7 @@ function HeroMode({ onStats, shared, setMode }: BenchProps & { shared: Shared; s
         const mat = buildHoloMaterial(
           { map: al, normalMap: no, holoMask: ho, whiteInk: shared.tex.whiteInk, foilPattern: shared.tex.foilPattern, height: shared.tex.height },
           PRESETS[0]!,
-          { normalScale: layers.emboss ? 1.0 : 0, heightStrength: 1.2 }
+          { normalScale: TUNE_DEFAULTS.normal, heightStrength: 1.2 }
         );
         setCardMat((prev) => {
           prev?.dispose();
@@ -609,21 +647,9 @@ function HeroMode({ onStats, shared, setMode }: BenchProps & { shared: Shared; s
     return () => {
       alive = false;
     };
-  }, [cardSlug, shared, layers.emboss]);
+  }, [cardSlug, shared]);
 
-  useEffect(() => {
-    stageRef.current = {
-      foil: layers.foil ? 1 : 0,
-      holo: layers.holo ? 1 : 0,
-      lines: layers.lines ? 1 : 0,
-      glitter: layers.glitter ? 1 : 0,
-    };
-    const ns = layers.emboss ? 1.3 : 0;
-    shared.mats.forEach((m) => m.normalScale.set(ns, ns));
-    if (cardMatRef.current) cardMatRef.current.normalScale.set(layers.emboss ? 1.0 : 0, layers.emboss ? 1.0 : 0);
-  }, [layers, shared, cardMat]);
-
-  // motion = camera angular velocity (orbit/auto-rotate) → lifts sparkle while moving
+  // motion = camera angular velocity → lifts sparkle while you orbit
   useFrame((state, dt) => {
     const q = state.camera.quaternion;
     const d = Math.min(1, Math.abs(prevQ.current.dot(q)));
@@ -632,71 +658,30 @@ function HeroMode({ onStats, shared, setMode }: BenchProps & { shared: Shared; s
     prevQ.current.copy(q);
   });
 
-  const toggle = (k: LayerKey) => setLayers((p) => ({ ...p, [k]: !p[k] }));
-
   return (
     <>
       <color attach="background" args={['#070811']} />
       <Studio />
-      <group scale={2.6}>
-        <Card shared={shared} presetIndex={preset} material={cardMat} />
-      </group>
+      {view === '3d' ? (
+        <group scale={2.6}>
+          <Card shared={shared} presetIndex={preset} material={cardMat} />
+        </group>
+      ) : null}
       <EffectComposer>
         <Bloom intensity={0.45} luminanceThreshold={0.72} luminanceSmoothing={0.3} mipmapBlur />
         <Vignette eskil={false} offset={0.28} darkness={0.7} />
       </EffectComposer>
-      <OrbitControls
-        enablePan={false}
-        target={[0, 0, 0]}
-        autoRotate
-        autoRotateSpeed={0.4}
-        minDistance={6}
-        maxDistance={18}
-        minPolarAngle={0.5}
-        maxPolarAngle={Math.PI - 0.5}
-      />
-      <Controls>
-        <div className="holo-presets">
-          <button type="button" className={!cardSlug ? 'on' : ''} onClick={() => setCardSlug(null)}>
-            Procedural
-          </button>
-          {cards.map((cd) => (
-            <button key={cd.slug} type="button" className={cardSlug === cd.slug ? 'on' : ''} onClick={() => setCardSlug(cd.slug)}>
-              {cd.name}
-            </button>
-          ))}
-        </div>
-        <div className="holo-presets">
-          {LAYERS.map((l) => (
-            <button key={l.key} type="button" className={layers[l.key] ? 'on' : ''} onClick={() => toggle(l.key)}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-        {!cardSlug ? (
-          <div className="holo-presets">
-            {PRESETS.map((p, i) => (
-              <button key={p.name} type="button" className={i === preset ? 'on' : ''} onClick={() => setPreset(i)}>
-                {p.name}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <button type="button" onClick={() => setMode('grid')}>
-          ▦ grid bench
-        </button>
-      </Controls>
+      <OrbitControls enablePan={false} target={[0, 0, 0]} minDistance={3} maxDistance={18} minPolarAngle={0.5} maxPolarAngle={Math.PI - 0.5} />
     </>
   );
 }
 
-function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Shared; setMode: (m: 'hero') => void }) {
+function GridMode({ onStats, runId, shared }: BenchProps & { shared: Shared }) {
   const grp = useRef<THREE.Group>(null);
   const groups = useRef<THREE.Group[]>([]);
   const filled = useRef(0);
   const motion = useRef(0.4);
-  const stageRef = useRef<Stage>({ foil: 1, holo: 1, lines: 1, glitter: 1 });
-  useHolo(shared, motion, stageRef);
+  useHolo(shared, motion);
 
   const layout = () => {
     const nn = groups.current.length;
@@ -722,7 +707,11 @@ function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Sh
       const frontM = new THREE.Mesh(shared.front, shared.mats[i % shared.mats.length]!);
       frontM.position.z = DEPTH / 2 + 0.002;
       frontM.frustumCulled = false;
-      card.add(coreM, frontM);
+      const backM = new THREE.Mesh(shared.front, shared.backMat);
+      backM.position.z = -DEPTH / 2 - 0.002;
+      backM.rotation.y = Math.PI;
+      backM.frustumCulled = false;
+      card.add(coreM, frontM, backM);
       groups.current.push(card);
       g.add(card);
     }
@@ -740,18 +729,13 @@ function GridMode({ onStats, runId, shared, setMode }: BenchProps & { shared: Sh
       <EffectComposer>
         <Bloom intensity={0.4} luminanceThreshold={0.72} mipmapBlur />
       </EffectComposer>
-      <OrbitControls enablePan={false} autoRotate autoRotateSpeed={0.2} minDistance={6} maxDistance={40} />
-      <Controls>
-        <button type="button" onClick={() => setMode('hero')}>
-          ◆ hero card
-        </button>
-      </Controls>
+      <OrbitControls enablePan={false} minDistance={6} maxDistance={40} />
     </>
   );
 }
 
 export function HoloCardsBench({ onStats, runId }: BenchProps) {
-  const [mode, setMode] = useState<'hero' | 'grid'>('hero');
+  const mode = useHoloStore((s) => s.mode);
   const shared = useMemo<Shared>(() => {
     const tex = makeTextures();
     const mats = makeMaterials(tex);
@@ -759,7 +743,16 @@ export function HoloCardsBench({ onStats, runId }: BenchProps) {
     remapUV(front, CW - 0.04, CH - 0.04);
     const core = new THREE.ExtrudeGeometry(roundedRectShape(CW, CH, RAD), { depth: DEPTH, bevelEnabled: false });
     const coreMat = new THREE.MeshStandardMaterial({ color: '#0a0a12', roughness: 0.5, metalness: 0.15 });
-    return { front, core, mats, coreMat, tex, textures: [tex.albedo, tex.holoMask, tex.whiteInk, tex.foilPattern, tex.height, tex.emboss] };
+    const backMat = new THREE.MeshStandardMaterial({ map: tex.cardBack, roughness: 0.42, metalness: 0.32 });
+    return {
+      front,
+      core,
+      mats,
+      coreMat,
+      backMat,
+      tex,
+      textures: [tex.albedo, tex.holoMask, tex.whiteInk, tex.foilPattern, tex.height, tex.emboss, tex.cardBack],
+    };
   }, []);
 
   useEffect(() => {
@@ -767,14 +760,15 @@ export function HoloCardsBench({ onStats, runId }: BenchProps) {
       shared.front.dispose();
       shared.core.dispose();
       shared.coreMat.dispose();
+      shared.backMat.dispose();
       shared.mats.forEach((m) => m.dispose());
       shared.textures.forEach((t) => t.dispose());
     };
   }, [shared]);
 
   return mode === 'hero' ? (
-    <HeroMode onStats={onStats} runId={runId} shared={shared} setMode={setMode} />
+    <HeroMode onStats={onStats} runId={runId} shared={shared} />
   ) : (
-    <GridMode onStats={onStats} runId={runId} shared={shared} setMode={setMode} />
+    <GridMode onStats={onStats} runId={runId} shared={shared} />
   );
 }

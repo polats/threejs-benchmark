@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { BenchDef, BenchGroup, RampState } from '../bench/types';
 
 const GROUP_LABELS: Record<BenchGroup, string> = {
@@ -17,6 +18,7 @@ export function Sidebar({
   onSelect,
   onRestart,
   onToggle,
+  extra,
 }: {
   benches: BenchDef[];
   active: BenchDef;
@@ -24,6 +26,7 @@ export function Sidebar({
   onSelect: (id: string) => void;
   onRestart: () => void;
   onToggle: () => void;
+  extra?: ReactNode;
 }) {
   const groups = GROUP_ORDER.map((g) => ({
     g,
@@ -49,6 +52,7 @@ export function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
+        {extra}
         {groups.map(({ g, items }) => (
           <section key={g} className="sidebar-section">
             <h2>{GROUP_LABELS[g]}</h2>
