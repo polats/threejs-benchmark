@@ -168,3 +168,57 @@ compute, can't verify headlessly), reaction-diffusion, decals, SSR/SSGI, caustic
 
 (Skipped: Ammo-based cloth/volume/rope/break — second vendored WASM + `wasm-unsafe-eval`;
 raw-WebGPU fluids — hard to port into three/R3F.)
+
+---
+
+## Holographic trading cards (researched) — the "Holo Cards" bench
+
+**Source:** Isaac Johnson, *Building the Ziggy Card* —
+https://isaac-johnson-blog.pages.dev/posts/building-ziggy-card/ — a WebGL
+Pokémon-style holographic trading card (R3F).
+
+### Technique (what makes the foil shimmer)
+- **`MeshPhysicalMaterial`** with **`iridescence`** (+ `iridescenceIOR`, thickness),
+  **`clearcoat`**, and metalness/roughness — the built-in iridescent thin-film is
+  the base spectral shift.
+- A **foil eligibility mask** texture drives *multiple* properties at once
+  (metalness ↑, roughness ↓, iridescence ↑) so foil reads as a different substrate,
+  not a colour overlay. Separate albedo / roughness / normal / metalness / mask maps.
+- **Custom GLSL via `onBeforeCompile`**, patching `#include <common>` /
+  `<map_fragment>` / `<roughnessmap_fragment>` etc. — **tangent-space reflection**
+  drives the shimmer (view-angle, not a timer), plus **anisotropic brushed lines**
+  and discrete **glitter flecks** (procedural foil micro-pattern).
+- **`CanvasTexture` compositing** to build card art + masks procedurally (→ no
+  vendored image assets needed; CSP-safe).
+- **Studio lighting:** `RectAreaLight` key/counter-key (needs
+  `RectAreaLightUniformsLib.init()` from three/addons) + rim/hair light + **bloom +
+  vignette**; `RoomEnvironment` PMREM for reflections. Correct colour spaces
+  (`SRGBColorSpace` for albedo, `NoColorSpace` for data maps).
+- **Interaction:** pointer/orbit **tilt** so the shimmer tracks view angle; gentle
+  auto-sway; motion derived from **angular velocity** (stays still when idle);
+  `prefers-reduced-motion` + WebGL2 detection failsafes. Leva presets:
+  **Rainbow Rare · Cosmos · Line Holo · Reverse**.
+
+### Bench plan — `HoloCardsBench` (group: `showcase`, **ramp**)
+A grid/fan of holographic cards that **tilt toward the pointer** (shimmer tracks the
+angle), each card cycling through the named presets so you see *different cards*.
+**Ramp the card count** — every card is an iridescent `MeshPhysicalMaterial` + the
+custom foil shader, so capacity measures PBR-material-fidelity throughput (a gap our
+Glass/Reflections benches only partly cover). Sketch:
+1. **Card geo:** a rounded-rect plane (or thin extruded box for laminated edges),
+   shared across instances; per-card the *material* differs (presets).
+2. **Procedural textures (CanvasTexture, no assets):** albedo (frame + art + a
+   number/emoji per card), a **foil mask** (the holo region), and a tiled
+   glitter/aniso-noise map. Generate once, reuse.
+3. **Material:** `MeshPhysicalMaterial({ iridescence, iridescenceIOR, clearcoat,
+   metalnessMap/roughnessMap = mask, envMapIntensity })` + `onBeforeCompile` adding
+   the tangent-space shimmer + glitter in `outgoingLight`. Presets = parameter sets
+   (hue shift, sparkle density, aniso strength).
+4. **Lighting:** `RectAreaLight` ×2 + `RoomEnvironment` + the existing
+   `@react-three/postprocessing` Bloom. (Init `RectAreaLightUniformsLib`.)
+5. **Ramp:** `grow(n)` adds cards on a grid (lazy-instantiated, monotonic like the
+   other ramps); the whole grid tilts on `pointermove` / auto-sway.
+🟢 WebGL2, no CDN/worker, procedural textures. The custom `onBeforeCompile` chunk
+patching is the one fiddly part — model it on the post's chunk replacements.
+**Showcase variant** (alternative): 1–3 hero cards, preset picker, big tilt — pure
+"wow"; report FPS like our other showcases.
