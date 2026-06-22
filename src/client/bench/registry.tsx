@@ -16,6 +16,9 @@ import { OceanBench } from './benches/OceanBench';
 import { GlassBench } from './benches/GlassBench';
 import { ReflectionsBench } from './benches/ReflectionsBench';
 import { PostBench } from './benches/PostBench';
+import { FatLinesBench } from './benches/FatLinesBench';
+import { MorphBench } from './benches/MorphBench';
+import { TextBench } from './benches/TextBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -69,6 +72,30 @@ export const BENCHES: BenchDef[] = [
     group: 'render',
     blurb: 'Many shadow-casting spot lights over a field — ramp the light (shadow-pass) count',
     Component: ShadowsBench,
+  },
+  {
+    id: 'fatlines',
+    label: 'Fat Lines',
+    unit: 'lines',
+    group: 'render',
+    blurb: 'Line2 / LineGeometry — true screen-space-width lines; ramp the line count',
+    Component: FatLinesBench,
+  },
+  {
+    id: 'morph',
+    label: 'Morph Targets',
+    unit: 'meshes',
+    group: 'render',
+    blurb: 'Per-mesh GPU morph blending (spiky + twist targets) — ramp the mesh count',
+    Component: MorphBench,
+  },
+  {
+    id: 'text',
+    label: '3D Text',
+    unit: 'words',
+    group: 'render',
+    blurb: 'Extruded TextGeometry glyphs (vendored font, no worker) — ramp the word count',
+    Component: TextBench,
   },
   {
     id: 'postfx',
