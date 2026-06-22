@@ -19,6 +19,8 @@ import { PostBench } from './benches/PostBench';
 import { FatLinesBench } from './benches/FatLinesBench';
 import { MorphBench } from './benches/MorphBench';
 import { TextBench } from './benches/TextBench';
+import { MetaballsBench } from './benches/MetaballsBench';
+import { BoidsBench } from './benches/BoidsBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -163,6 +165,23 @@ export const BENCHES: BenchDef[] = [
     group: 'physics',
     blurb: 'Rapier (Rust/WASM) rigid bodies — far higher body counts',
     Component: RapierBench,
+  },
+  {
+    id: 'boids',
+    label: 'GPGPU Boids',
+    unit: 'boids',
+    group: 'simulation',
+    blurb: 'Flocking (separation/alignment/cohesion) in GPGPU textures — ramp the boid count',
+    Component: BoidsBench,
+  },
+  {
+    id: 'metaballs',
+    label: 'Metaballs',
+    unit: '',
+    group: 'simulation',
+    blurb: 'Marching-cubes mercury blobs that merge and split, polygonized each frame',
+    showcase: true,
+    Component: MetaballsBench,
   },
   {
     id: 'crowd',

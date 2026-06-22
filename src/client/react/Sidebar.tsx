@@ -4,9 +4,10 @@ const GROUP_LABELS: Record<BenchGroup, string> = {
   render: 'Rendering',
   visual: 'Visual',
   physics: 'Physics',
+  simulation: 'Simulation',
   showcase: 'Showcase',
 };
-const GROUP_ORDER: BenchGroup[] = ['render', 'visual', 'physics', 'showcase'];
+const GROUP_ORDER: BenchGroup[] = ['render', 'visual', 'physics', 'simulation', 'showcase'];
 
 // Dismissable left sidebar (woid-style): grouped scene selection + live run status.
 export function Sidebar({

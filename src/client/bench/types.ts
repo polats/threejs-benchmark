@@ -14,7 +14,7 @@ export type BenchProps = {
   runId: number;
 };
 
-export type BenchGroup = 'render' | 'visual' | 'physics' | 'showcase';
+export type BenchGroup = 'render' | 'visual' | 'physics' | 'simulation' | 'showcase';
 
 export type BenchDef = {
   id: string;
