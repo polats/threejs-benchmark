@@ -24,6 +24,7 @@ import { BoidsBench } from './benches/BoidsBench';
 import { FractureBench } from './benches/FractureBench';
 import { ClothBench } from './benches/ClothBench';
 import { VolumeCloudsBench } from './benches/VolumeCloudsBench';
+import { TrailsBench } from './benches/TrailsBench';
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -184,6 +185,14 @@ export const BENCHES: BenchDef[] = [
     group: 'simulation',
     blurb: 'Flocking (separation/alignment/cohesion) in GPGPU textures — ramp the boid count',
     Component: BoidsBench,
+  },
+  {
+    id: 'trails',
+    label: 'Ribbon Trails',
+    unit: 'trails',
+    group: 'simulation',
+    blurb: 'A swarm trailing fading additive ribbons (CPU-rewritten each frame) — ramp the trail count',
+    Component: TrailsBench,
   },
   {
     id: 'metaballs',
