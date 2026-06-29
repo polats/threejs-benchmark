@@ -32,7 +32,7 @@
     "cannon-es": "^0.20.0",
     "devvit": "0.12.24",
     "hono": "4.12.21",
-    "postprocessing": "^6.39.1",
+    "postprocessing": "^6.39.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.185.0",
