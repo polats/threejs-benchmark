@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { defineConfig, type Plugin } from 'vite';
 import { devvit } from '@devvit/start/vite';
+import { hasLandscapeVendor, landscapeVendorPlugin } from './tools/landscapeVendor';
 
 // ── Build identity ───────────────────────────────────────────────────────────
 // Computed once at config load and threaded into the build:
@@ -44,8 +45,10 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(BUILD_SHA),
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    __HAS_LANDSCAPE_VENDOR__: JSON.stringify(hasLandscapeVendor()),
   },
   plugins: [
+    landscapeVendorPlugin(),
     devvit({
       client: {
         build: {

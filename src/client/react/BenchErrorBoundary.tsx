@@ -7,23 +7,23 @@ type Props = { resetKey: string; fallback: ReactNode; children: ReactNode };
 type State = { failed: boolean };
 
 export class BenchErrorBoundary extends Component<Props, State> {
-  state: State = { failed: false };
+  override state: State = { failed: false };
 
   static getDerivedStateFromError(): State {
     return { failed: true };
   }
 
-  componentDidUpdate(prev: Props) {
+  override componentDidUpdate(prev: Props) {
     if (prev.resetKey !== this.props.resetKey && this.state.failed) {
       this.setState({ failed: false });
     }
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Bench failed to load/render', error, info);
   }
 
-  render() {
+  override render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }

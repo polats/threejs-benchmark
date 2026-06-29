@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import { hasLandscapeVendor, landscapeVendorPlugin } from './tools/landscapeVendor';
 
 // Production STATIC build of the standalone browser playground (the benchmarks
 // with a mock API), for hosting on Vercel — NOT the Devvit/Reddit app (that uses
@@ -27,7 +28,9 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(gitSha()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __HAS_LANDSCAPE_VENDOR__: JSON.stringify(hasLandscapeVendor()),
   },
+  plugins: [landscapeVendorPlugin()],
   esbuild: { jsx: 'automatic' },
   build: {
     outDir: fileURLToPath(new URL('./dist-web', import.meta.url)),

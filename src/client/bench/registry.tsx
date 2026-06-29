@@ -1,5 +1,6 @@
 import { lazy, type ComponentType } from 'react';
 import type { BenchDef, BenchProps } from './types';
+import { HAS_LANDSCAPE_VENDOR } from '../build-info';
 import { InstancingBench } from './benches/InstancingBench';
 import { ParticlesBench } from './benches/ParticlesBench';
 import { GpgpuBench } from './benches/GpgpuBench';
@@ -30,12 +31,14 @@ import { LightStormBench } from './benches/LightStormBench';
 import { HoloCardsBench } from './benches/HoloCardsBench';
 import { LandscapeBench } from './benches/LandscapeBench';
 
-// Lazy-loaded: this bench imports the git-ignored vendored little-landscapes
-// pipeline (third-party, local-only). Loading it on demand means a missing
-// vendor/ dir only affects this bench (caught by the error boundary in App),
-// not the whole app.
-const LandscapeGlbBench = lazy(() =>
-  import('./benches/LandscapeGlbBench').then((m) => ({ default: m.LandscapeGlbBench }))
+// Lazy-loaded through a virtual module (see tools/landscapeVendor.ts): this bench
+// imports the git-ignored vendored little-landscapes pipeline (third-party,
+// local-only). On a clean checkout (e.g. the Vercel build) the vendor/ dir is
+// absent, so the virtual module resolves to an inert stub and the bench is left
+// out of BENCHES entirely (guarded by __HAS_LANDSCAPE_VENDOR__). When the vendor
+// pipeline is present it loads on demand, isolated by the error boundary in App.
+const LandscapeGlbBench = lazy(
+  () => import('virtual:landscape-glb-bench')
 ) as ComponentType<BenchProps>;
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
@@ -286,14 +289,20 @@ export const BENCHES: BenchDef[] = [
     showcase: true,
     Component: LandscapeBench,
   },
-  {
-    id: 'landscape-glb',
-    label: 'Landscape (real tiles)',
-    unit: '',
-    group: 'showcase',
-    blurb:
-      'Little-Landscapes pipeline driven directly: socket WFC + sculpted Tiles.glb + atlas toon materials + instanced props (vendored assets, local only)',
-    showcase: true,
-    Component: LandscapeGlbBench,
-  },
+  // Only registered when the vendored little-landscapes pipeline is present
+  // (absent on the public/Vercel build — see the LandscapeGlbBench comment above).
+  ...(HAS_LANDSCAPE_VENDOR
+    ? [
+        {
+          id: 'landscape-glb',
+          label: 'Landscape (real tiles)',
+          unit: '',
+          group: 'showcase',
+          blurb:
+            'Little-Landscapes pipeline driven directly: socket WFC + sculpted Tiles.glb + atlas toon materials + instanced props (vendored assets, local only)',
+          showcase: true,
+          Component: LandscapeGlbBench,
+        } satisfies BenchDef,
+      ]
+    : []),
 ];
