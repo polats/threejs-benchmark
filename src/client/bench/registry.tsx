@@ -1,4 +1,5 @@
-import type { BenchDef } from './types';
+import { lazy, type ComponentType } from 'react';
+import type { BenchDef, BenchProps } from './types';
 import { InstancingBench } from './benches/InstancingBench';
 import { ParticlesBench } from './benches/ParticlesBench';
 import { GpgpuBench } from './benches/GpgpuBench';
@@ -27,6 +28,15 @@ import { VolumeCloudsBench } from './benches/VolumeCloudsBench';
 import { TrailsBench } from './benches/TrailsBench';
 import { LightStormBench } from './benches/LightStormBench';
 import { HoloCardsBench } from './benches/HoloCardsBench';
+import { LandscapeBench } from './benches/LandscapeBench';
+
+// Lazy-loaded: this bench imports the git-ignored vendored little-landscapes
+// pipeline (third-party, local-only). Loading it on demand means a missing
+// vendor/ dir only affects this bench (caught by the error boundary in App),
+// not the whole app.
+const LandscapeGlbBench = lazy(() =>
+  import('./benches/LandscapeGlbBench').then((m) => ({ default: m.LandscapeGlbBench }))
+) as ComponentType<BenchProps>;
 
 // The bench bar reads this list. Add a bench: implement it (extend the harness via
 // useRamp) and register it here.
@@ -265,5 +275,25 @@ export const BENCHES: BenchDef[] = [
     blurb: 'Holographic foil cards (iridescence + onBeforeCompile shimmer/glitter, RectAreaLight) — hero card or a ramping grid',
     showcase: true,
     Component: HoloCardsBench,
+  },
+  {
+    id: 'landscape',
+    label: 'Procedural Landscape',
+    unit: '',
+    group: 'showcase',
+    blurb:
+      'Stylized low-poly diorama (Little-Landscapes-inspired) — seeded tile layout, toon materials, atmospheric vertical gradient, soft shadows, wind sway + toon water',
+    showcase: true,
+    Component: LandscapeBench,
+  },
+  {
+    id: 'landscape-glb',
+    label: 'Landscape (real tiles)',
+    unit: '',
+    group: 'showcase',
+    blurb:
+      'Little-Landscapes pipeline driven directly: socket WFC + sculpted Tiles.glb + atlas toon materials + instanced props (vendored assets, local only)',
+    showcase: true,
+    Component: LandscapeGlbBench,
   },
 ];

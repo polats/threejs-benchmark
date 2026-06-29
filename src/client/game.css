@@ -65,6 +65,19 @@ canvas {
   letter-spacing: 0.02em;
 }
 
+.sidebar-three-ver {
+  margin-right: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(143, 208, 255, 0.14);
+  border: 1px solid rgba(143, 208, 255, 0.3);
+  color: #8fd0ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 .sidebar-title p {
   margin: 6px 0 0;
   font-size: 11px;
@@ -214,6 +227,76 @@ canvas {
   border-color: rgba(255, 255, 255, 0.35);
 }
 
+/* ── Controls sidebar (dismissable, right-hand, hosts bench control panels) ── */
+.controls-sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  background: rgba(9, 12, 20, 0.82);
+  backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 22;
+}
+
+.controls-sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+}
+
+.controls-sidebar-head span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b93a7;
+}
+
+.controls-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* the hosted panels were styled for the left nav; flush them to the head here */
+.controls-sidebar-body .holo-panel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.controls-open {
+  position: fixed;
+  right: 12px;
+  top: 12px;
+  z-index: 23;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9px;
+  background: rgba(9, 12, 20, 0.8);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.controls-open:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
 .sidebar-open-fps {
   font-size: 12px;
   font-weight: 700;
@@ -227,6 +310,64 @@ canvas {
   z-index: 20;
   font-size: 11px;
   opacity: 0.5;
+}
+
+.external-showcase-frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #05060d;
+}
+
+.bench-error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  background: #0a0d18;
+  color: #cfd6e0;
+}
+
+.bench-error strong {
+  font-size: 16px;
+  color: #ffd166;
+}
+
+.bench-error p {
+  max-width: 440px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+.bench-error code {
+  font-size: 12px;
+  color: #8fd0ff;
+  word-break: break-all;
+}
+
+.external-showcase-section h2 {
+  color: #d6adff;
+}
+
+.showcase-source {
+  display: inline-block;
+  margin-top: 6px;
+  color: #8fd0ff;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.showcase-source:hover {
+  text-decoration: underline;
 }
 
 /* WebGPU benches render into their own canvas host (outside the R3F canvas). */
@@ -350,6 +491,17 @@ canvas {
   background: linear-gradient(180deg, #8fd0ff, #4aa3ff);
   color: #06203a;
   border-color: transparent;
+}
+.hp-seed {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #cfd6e0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .holo-sliders2 {
   display: flex;

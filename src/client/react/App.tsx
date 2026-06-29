@@ -3,10 +3,14 @@ import { Canvas } from '@react-three/fiber';
 import { BENCHES } from '../bench/registry';
 import type { RampState } from '../bench/types';
 import { Sidebar } from './Sidebar';
+import { BenchErrorBoundary } from './BenchErrorBoundary';
+import { ControlsSidebar } from './ControlsSidebar';
 import { HoloControlsPanel } from './HoloControlsPanel';
+import { LandscapeControlsPanel } from './LandscapeControlsPanel';
 import { useHoloStore } from '../bench/holoStore';
 import { bridge } from '../devvit-bridge';
 import { APP_VERSION, BUILD_TIME } from '../build-info';
+import type { ExternalShowcase } from '../externalShowcases';
 
 const ZERO: RampState = { fps: 0, count: 0, done: false, capacity: 0 };
 
@@ -18,14 +22,29 @@ export function App() {
   const [runId, setRunId] = useState(0);
   const [stats, setStats] = useState<RampState>(ZERO);
   const [collapsed, setCollapsed] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [externalShowcases, setExternalShowcases] = useState<ExternalShowcase[]>([]);
   const reported = useRef(false);
 
   const active = BENCHES.find((b) => b.id === activeId) ?? BENCHES[0]!;
+  const activeExternal = externalShowcases.find((item) => item.id === activeId);
   const Bench = active.Component;
   const isWebGPU = active.webgpu === true;
-  const holoActive = active.id === 'holo-cards';
+  const holoActive = !activeExternal && active.id === 'holo-cards';
+  const landscapeActive =
+    !activeExternal && (active.id === 'landscape' || active.id === 'landscape-glb');
   const holoView = useHoloStore((s) => s.view);
   const holoSlug = useHoloStore((s) => s.cardSlug);
+
+  useEffect(() => {
+    void fetch('external-showcases.config.json')
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<ExternalShowcase[]>;
+      })
+      .then(setExternalShowcases)
+      .catch(() => setExternalShowcases([]));
+  }, []);
 
   const select = useCallback((id: string) => {
     setActiveId(id);
@@ -61,22 +80,43 @@ export function App() {
 
   return (
     <div className={collapsed ? 'app sidebar-collapsed' : 'app'}>
-      {isWebGPU ? (
-        // WebGPU benches own their own canvas + renderer (three/webgpu has no
-        // WebGLRenderer, so it can't share the R3F canvas with the WebGL benches).
-        <Bench key={runId} onStats={setStats} runId={runId} />
-      ) : (
-        <Canvas
-          shadows
-          dpr={[1, 2]}
-          camera={{ position: [0, 2, 13], fov: 55 }}
-          gl={{ antialias: true, powerPreference: 'high-performance' }}
-        >
-          <Suspense fallback={null}>
-            <Bench key={runId} onStats={setStats} runId={runId} />
-          </Suspense>
-        </Canvas>
-      )}
+      <BenchErrorBoundary
+        resetKey={active.id}
+        fallback={
+          <div className="bench-error">
+            <strong>“{active.label}” couldn’t load</strong>
+            <p>
+              This bench depends on the vendored little-landscapes pipeline, which is
+              git-ignored (local-only). Restore <code>src/client/bench/landscape/vendor/</code>
+              {' '}and <code>public/external-showcases/…</code> to use it.
+            </p>
+          </div>
+        }
+      >
+        {activeExternal ? (
+          <iframe
+            key={runId}
+            className="external-showcase-frame"
+            src={activeExternal.localUrl}
+            title={activeExternal.label}
+          />
+        ) : isWebGPU ? (
+          // WebGPU benches own their own canvas + renderer (three/webgpu has no
+          // WebGLRenderer, so it can't share the R3F canvas with the WebGL benches).
+          <Bench key={runId} onStats={setStats} runId={runId} />
+        ) : (
+          <Canvas
+            shadows
+            dpr={[1, 2]}
+            camera={{ position: [0, 2, 13], fov: 55 }}
+            gl={{ antialias: true, powerPreference: 'high-performance' }}
+          >
+            <Suspense fallback={null}>
+              <Bench key={runId} onStats={setStats} runId={runId} />
+            </Suspense>
+          </Canvas>
+        )}
+      </BenchErrorBoundary>
 
       <Sidebar
         benches={BENCHES}
@@ -85,8 +125,18 @@ export function App() {
         onSelect={select}
         onRestart={restart}
         onToggle={() => setCollapsed(true)}
-        extra={holoActive ? <HoloControlsPanel /> : undefined}
+        externalShowcases={externalShowcases}
+        activeExternal={activeExternal}
       />
+
+      {holoActive || landscapeActive ? (
+        <ControlsSidebar
+          collapsed={controlsCollapsed}
+          onToggle={() => setControlsCollapsed((c) => !c)}
+        >
+          {holoActive ? <HoloControlsPanel /> : <LandscapeControlsPanel />}
+        </ControlsSidebar>
+      ) : null}
 
       {holoActive && holoView !== '3d' && holoSlug ? (
         <div className="holo-mapview">

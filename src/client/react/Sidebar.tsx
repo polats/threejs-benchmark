@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { REVISION } from 'three';
 import type { BenchDef, BenchGroup, RampState } from '../bench/types';
+import type { ExternalShowcase } from '../externalShowcases';
 
 const GROUP_LABELS: Record<BenchGroup, string> = {
   render: 'Rendering',
@@ -18,7 +19,8 @@ export function Sidebar({
   onSelect,
   onRestart,
   onToggle,
-  extra,
+  externalShowcases,
+  activeExternal,
 }: {
   benches: BenchDef[];
   active: BenchDef;
@@ -26,7 +28,8 @@ export function Sidebar({
   onSelect: (id: string) => void;
   onRestart: () => void;
   onToggle: () => void;
-  extra?: ReactNode;
+  externalShowcases: ExternalShowcase[];
+  activeExternal?: ExternalShowcase | undefined;
 }) {
   const groups = GROUP_ORDER.map((g) => ({
     g,
@@ -38,6 +41,9 @@ export function Sidebar({
       <div className="sidebar-title">
         <div className="sidebar-title-row">
           <strong>three.js bench</strong>
+          <span className="sidebar-three-ver" title={`three.js r${REVISION}`}>
+            r{REVISION}
+          </span>
           <button
             type="button"
             className="sidebar-collapse"
@@ -52,7 +58,6 @@ export function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
-        {extra}
         {groups.map(({ g, items }) => (
           <section key={g} className="sidebar-section">
             <h2>{GROUP_LABELS[g]}</h2>
@@ -61,7 +66,7 @@ export function Sidebar({
                 <li key={b.id}>
                   <button
                     type="button"
-                    className={b.id === active.id ? 'sidebar-link active' : 'sidebar-link'}
+                    className={!activeExternal && b.id === active.id ? 'sidebar-link active' : 'sidebar-link'}
                     onClick={() => onSelect(b.id)}
                     title={b.blurb}
                   >
@@ -72,29 +77,61 @@ export function Sidebar({
             </ul>
           </section>
         ))}
+        {externalShowcases.length > 0 ? (
+          <section className="sidebar-section external-showcase-section">
+            <h2>External Showcase</h2>
+            <ul>
+              {externalShowcases.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={item.id === activeExternal?.id ? 'sidebar-link active' : 'sidebar-link'}
+                    onClick={() => onSelect(item.id)}
+                    title={item.blurb}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </nav>
 
       <div className="sidebar-status">
-        <div className="status-head">{active.label}</div>
-        <div className="status-row">
-          <span className="status-fps">{stats.fps}</span> fps
-        </div>
-        {active.showcase ? (
-          <div className="status-row ramp">
-            {stats.count > 0 ? `${stats.count.toLocaleString()} ${active.unit} · showcase` : 'showcase scene'}
-          </div>
+        <div className="status-head">{activeExternal?.label ?? active.label}</div>
+        {activeExternal ? (
+          <>
+            <div className="status-row ramp">local external capture</div>
+            <a className="showcase-source" href={activeExternal.sourceUrl} target="_blank" rel="noreferrer">
+              view source ↗
+            </a>
+          </>
         ) : (
           <>
             <div className="status-row">
-              {stats.count.toLocaleString()} {active.unit}
+              <span className="status-fps">{stats.fps}</span> fps
             </div>
-            <div className={stats.done ? 'status-row done' : 'status-row ramp'}>
-              {stats.done ? `capacity ${stats.capacity.toLocaleString()}` : 'ramping…'}
-            </div>
+            {active.showcase ? (
+              <div className="status-row ramp">
+                {stats.count > 0
+                  ? `${stats.count.toLocaleString()} ${active.unit} · showcase`
+                  : 'showcase scene'}
+              </div>
+            ) : (
+              <>
+                <div className="status-row">
+                  {stats.count.toLocaleString()} {active.unit}
+                </div>
+                <div className={stats.done ? 'status-row done' : 'status-row ramp'}>
+                  {stats.done ? `capacity ${stats.capacity.toLocaleString()}` : 'ramping…'}
+                </div>
+              </>
+            )}
           </>
         )}
         <button type="button" className="sidebar-action" onClick={onRestart}>
-          ↻ restart run
+          ↻ {activeExternal ? 'reload showcase' : 'restart run'}
         </button>
       </div>
     </aside>
