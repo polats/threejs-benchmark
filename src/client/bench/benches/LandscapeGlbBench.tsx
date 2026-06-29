@@ -41,7 +41,7 @@ const GRID_W = 12;
 const GRID_H = 10;
 const CELL = 2;
 const CENTER: [number, number, number] = [((GRID_W - 1) * CELL) / 2, 0, ((GRID_H - 1) * CELL) / 2];
-const ASSET_BASE = '/external-showcases/little-landscapes/sites/little-landscapes.vercel.app/';
+const ASSET_BASE = '/landscape/';
 const noop = () => {};
 
 installSeededRandom();

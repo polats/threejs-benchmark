@@ -14,9 +14,6 @@ showcases.config.mjs
 public/external-showcases/
 public/external-showcases.config.json
 
-# vendored little-landscapes pipeline (third-party code, local-only — do not commit)
-src/client/bench/landscape/vendor/
-
 # misc
 .DS_Store
 *.log
